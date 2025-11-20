@@ -2,14 +2,15 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>多宝骰子 (Duo Bao Dice)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>多宝骰子 (Duo Bao Dice) - 完美体验版</title>
     
     <!-- 引入 React 和 Tailwind -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 启用 JIT 模式 -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
     
     <!-- 引入图标库 -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -19,18 +20,22 @@
 
     <style>
         /* 全局样式调整 */
-        body {
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
             font-family: 'Roboto', sans-serif;
-            background-color: #0a1128; /* 深色背景兜底 */
+            background-color: #0a1128;
             overflow: hidden;
-            touch-action: manipulation; /* 禁止双击缩放 */
+            touch-action: none;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         
-        /* 使用快乐字体作为标题 */
+        #root { height: 100%; }
         .font-cute { font-family: 'Zcool KuaiLe', sans-serif; }
 
-        /* --- 3D 骰子核心引擎 --- */
+        /* --- 3D 骰子引擎 --- */
         .scene {
             perspective: 1200px;
             display: flex;
@@ -41,10 +46,11 @@
         .cube-wrapper {
             position: relative;
             transform-style: preserve-3d;
-            width: 80px;
-            height: 80px;
-            transition: transform 1.2s cubic-bezier(0.19, 1, 0.22, 1), top 0.5s ease-in-out, left 0.5s ease-in-out; 
+            width: 60px; /* Mobile Default */
+            height: 60px;
+            transition: transform 1.2s cubic-bezier(0.19, 1, 0.22, 1); 
         }
+        @media (min-width: 640px) { .cube-wrapper { width: 80px; height: 80px; } }
 
         .cube {
             width: 100%;
@@ -55,116 +61,123 @@
 
         .face {
             position: absolute;
-            width: 80px;
-            height: 80px;
+            width: 60px;
+            height: 60px;
             background: linear-gradient(145deg, #ffffff, #f0f0f0);
-            border-radius: 16px; /* 更圆润的骰子 */
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.1), inset 0 0 5px rgba(0,0,0,0.05);
+            border-radius: 12px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1), inset 0 0 2px rgba(0,0,0,0.05);
             display: flex;
             justify-content: center;
             align-items: center;
-            backface-visibility: hidden; /* 优化性能 */
+            backface-visibility: hidden;
+        }
+        @media (min-width: 640px) { 
+            .face { width: 80px; height: 80px; border-radius: 16px; box-shadow: inset 0 0 15px rgba(0,0,0,0.1); } 
         }
 
         /* 骰子点数 */
         .dot {
-            width: 16px;
-            height: 16px;
+            width: 12px;
+            height: 12px;
             background: #333;
             border-radius: 50%;
-            box-shadow: inset 1px 1px 3px rgba(0,0,0,0.5);
+            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.5);
         }
-        .dot.red {
-            background: #ff5e5e;
-            box-shadow: inset 1px 1px 3px rgba(100,0,0,0.3);
-        }
+        .dot.red { background: #ff5e5e; box-shadow: inset 1px 1px 2px rgba(100,0,0,0.3); }
+        @media (min-width: 640px) { .dot { width: 16px; height: 16px; } }
 
         /* 3D构建 */
-        .face.front  { transform: rotateY(0deg) translateZ(40px); }
-        .face.back   { transform: rotateY(180deg) translateZ(40px); }
-        .face.right  { transform: rotateY(90deg) translateZ(40px); }
-        .face.left   { transform: rotateY(-90deg) translateZ(40px); }
-        .face.top    { transform: rotateX(90deg) translateZ(40px); }
-        .face.bottom { transform: rotateX(-90deg) translateZ(40px); }
+        .cube-wrapper .face.front  { transform: rotateY(0deg) translateZ(30px); }
+        .cube-wrapper .face.back   { transform: rotateY(180deg) translateZ(30px); }
+        .cube-wrapper .face.right  { transform: rotateY(90deg) translateZ(30px); }
+        .cube-wrapper .face.left   { transform: rotateY(-90deg) translateZ(30px); }
+        .cube-wrapper .face.top    { transform: rotateX(90deg) translateZ(30px); }
+        .cube-wrapper .face.bottom { transform: rotateX(-90deg) translateZ(30px); }
+        
+        @media (min-width: 640px) {
+            .cube-wrapper .face.front  { transform: rotateY(0deg) translateZ(40px); }
+            .cube-wrapper .face.back   { transform: rotateY(180deg) translateZ(40px); }
+            .cube-wrapper .face.right  { transform: rotateY(90deg) translateZ(40px); }
+            .cube-wrapper .face.left   { transform: rotateY(-90deg) translateZ(40px); }
+            .cube-wrapper .face.top    { transform: rotateX(90deg) translateZ(40px); }
+            .cube-wrapper .face.bottom { transform: rotateX(-90deg) translateZ(40px); }
+        }
 
         /* 动态阴影 */
         .shadow-spot {
             position: absolute;
-            width: 80px;
-            height: 80px;
+            width: 60px;
+            height: 60px;
             background: radial-gradient(rgba(0,0,0,0.4), transparent 70%);
-            transform: rotateX(90deg) translateZ(-65px);
-            filter: blur(12px);
+            transform: rotateX(90deg) translateZ(-50px);
+            filter: blur(8px);
             opacity: 0.6;
             transition: all 0.3s;
         }
+        @media (min-width: 640px) { .shadow-spot { width: 80px; height: 80px; transform: translateZ(-65px); } }
 
-        /* 输赢动画 */
-        @keyframes pulse-gold {
-            0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(255, 215, 0, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+        /* 赢钱飘字动画 */
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-80px) scale(1.5); }
         }
-        .animate-pulse-gold {
-            animation: pulse-gold 1.5s infinite;
+        .floating-text {
+            position: absolute;
+            color: #fbbf24;
+            font-weight: 900;
+            font-family: 'Zcool KuaiLe', sans-serif;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            animation: floatUp 2s ease-out forwards;
+            z-index: 50;
         }
-        
+
+        /* 输赢闪烁 */
         @keyframes flash-win {
-            0%, 100% { background-color: rgba(234, 179, 8, 0.2); border-color: rgba(234, 179, 8, 1); }
-            50% { background-color: rgba(234, 179, 8, 0.6); border-color: #fff; box-shadow: 0 0 30px #fbbf24; }
+            0%, 100% { border-color: rgba(234, 179, 8, 1); box-shadow: 0 0 0 transparent; }
+            50% { border-color: #fff; box-shadow: 0 0 30px #fbbf24; }
         }
-        .animate-win {
-            animation: flash-win 0.8s infinite;
+        .animate-win { animation: flash-win 0.8s infinite; }
+
+        /* 玻璃罩质感 */
+        .dome-glass {
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.01) 50%, rgba(255,255,255,0.05) 100%);
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.1), 0 10px 20px rgba(0,0,0,0.3);
+            border-top: 1px solid rgba(255,255,255,0.3);
         }
 
-        /* 小游戏风格背景 */
         .game-bg {
-            background-color: #1a1c2c; /* 深蓝紫色调 */
-            background-image: 
-                radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
-                radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
-                radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
-            background-size: 550px 550px, 350px 350px, 250px 250px;
-            background-position: 0 0, 40px 60px, 130px 270px;
+            background-color: #1a1c2c;
+            background-image: radial-gradient(white, rgba(255,255,255,.1) 1px, transparent 2px);
+            background-size: 40px 40px;
         }
-        
-        .game-overlay {
-            background: radial-gradient(circle at center, rgba(26, 28, 44, 0.3) 0%, rgba(10, 12, 20, 0.8) 100%);
-        }
+        .game-overlay { background: radial-gradient(circle at center, rgba(26, 28, 44, 0.4) 0%, rgba(10, 12, 20, 0.9) 100%); }
 
-        /* 玻璃拟态 */
         .glass-panel {
             background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
-            border-radius: 20px;
+            box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
         }
 
-        /* 聊天室滚动条样式 */
         .chat-scroll::-webkit-scrollbar { width: 4px; }
-        .chat-scroll::-webkit-scrollbar-track { background: transparent; }
         .chat-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 2px; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeIn 0.3s ease-out forwards; }
     </style>
 
-    <!-- Firebase Setup Module -->
+    <!-- Firebase Setup -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, updateDoc, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         window.FB = {
-            initializeApp,
-            getAuth,
-            signInAnonymously,
-            signInWithCustomToken,
-            onAuthStateChanged,
-            getFirestore,
-            collection,
-            addDoc,
-            onSnapshot,
-            serverTimestamp
+            initializeApp, getAuth, signInAnonymously, onAuthStateChanged,
+            getFirestore, collection, doc, setDoc, updateDoc, addDoc, onSnapshot, serverTimestamp
         };
     </script>
 </head>
@@ -173,14 +186,12 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef, useMemo } = React;
+        const { useState, useEffect, useRef } = React;
 
-        // --- 音频合成器 ---
+        // --- 音频 & 震动 ---
         const AudioSynth = {
             ctx: null,
-            init: () => {
-                if (!AudioSynth.ctx) AudioSynth.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            },
+            init: () => { if (!AudioSynth.ctx) AudioSynth.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
             playTone: (freq, type, duration) => {
                 AudioSynth.init();
                 const osc = AudioSynth.ctx.createOscillator();
@@ -194,53 +205,36 @@
                 osc.stop(AudioSynth.ctx.currentTime + duration);
             },
             playRoll: () => {
-                // 清脆的碰撞声
-                for(let i=0; i<6; i++) {
-                    setTimeout(() => AudioSynth.playTone(1200 + Math.random()*800, 'sine', 0.05), i * 60);
-                }
+                for(let i=0; i<6; i++) setTimeout(() => AudioSynth.playTone(1200 + Math.random()*800, 'sine', 0.05), i * 60);
             },
             playWin: () => {
-                // 可爱的胜利音效
                 [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => AudioSynth.playTone(f, 'sine', 0.4), i * 100));
             },
-            playLose: () => {
-                AudioSynth.playTone(200, 'triangle', 0.3);
-            },
-            playChip: () => {
-                 AudioSynth.playTone(1500, 'sine', 0.08);
-            },
-            playMsg: () => {
-                AudioSynth.playTone(800, 'sine', 0.1);
+            playLose: () => AudioSynth.playTone(200, 'triangle', 0.3),
+            playChip: () => AudioSynth.playTone(1500, 'sine', 0.08),
+            
+            // 震动反馈 API
+            vibrate: (pattern) => {
+                if (navigator.vibrate) navigator.vibrate(pattern);
             }
         };
 
         // --- 粒子效果 ---
         const ParticleSystem = ({ active }) => {
             const canvasRef = useRef(null);
-            
             useEffect(() => {
                 if (!active) return;
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
-                
                 const particles = [];
-                const colors = ['#FCD34D', '#F59E0B', '#FFFFFF', '#60A5FA']; // 金、橙、白、蓝
-
-                for(let i=0; i<80; i++) {
-                    particles.push({
-                        x: window.innerWidth / 2,
-                        y: window.innerHeight / 2,
-                        vx: (Math.random() - 0.5) * 20,
-                        vy: (Math.random() - 0.5) * 20,
-                        size: Math.random() * 6 + 4,
-                        color: colors[Math.floor(Math.random() * colors.length)],
-                        life: 1.0,
-                        shape: Math.random() > 0.5 ? 'circle' : 'rect'
-                    });
-                }
-
+                const colors = ['#FCD34D', '#F59E0B', '#FFFFFF', '#60A5FA']; 
+                for(let i=0; i<80; i++) particles.push({
+                    x: window.innerWidth/2, y: window.innerHeight/2,
+                    vx: (Math.random()-0.5)*20, vy: (Math.random()-0.5)*20,
+                    size: Math.random()*6+4, color: colors[Math.floor(Math.random()*colors.length)], life: 1.0
+                });
                 const animate = () => {
                     if (!canvas) return;
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -248,29 +242,15 @@
                     particles.forEach(p => {
                         if(p.life > 0) {
                             alive = true;
-                            p.x += p.vx;
-                            p.y += p.vy;
-                            p.vy += 0.3; // 重力
-                            p.vx *= 0.95; // 阻力
-                            p.life -= 0.015;
-                            ctx.globalAlpha = p.life;
-                            ctx.fillStyle = p.color;
-                            ctx.beginPath();
-                            if (p.shape === 'circle') {
-                                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                            } else {
-                                ctx.rect(p.x, p.y, p.size, p.size);
-                            }
-                            ctx.fill();
+                            p.x += p.vx; p.y += p.vy; p.vy += 0.3; p.vx *= 0.95; p.life -= 0.015;
+                            ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+                            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
                         }
                     });
-                    if (alive) requestAnimationFrame(animate);
-                    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    if (alive) requestAnimationFrame(animate); else ctx.clearRect(0, 0, canvas.width, canvas.height);
                 };
                 animate();
-
             }, [active]);
-
             return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full pointer-events-none z-50" />;
         };
 
@@ -279,34 +259,23 @@
             const [messages, setMessages] = useState([]);
             const [isOpen, setIsOpen] = useState(false);
             const [inputText, setInputText] = useState("");
-            const [tempName, setTempName] = useState(nickname);
             const [isEditingName, setIsEditingName] = useState(!nickname);
+            const [tempName, setTempName] = useState(nickname);
             const messagesEndRef = useRef(null);
 
             useEffect(() => {
                 if (!user || !db) return;
-
                 const q = window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
-                
                 const unsubscribe = window.FB.onSnapshot(q, (snapshot) => {
                     const msgs = [];
-                    snapshot.forEach((doc) => {
-                        msgs.push({ id: doc.id, ...doc.data() });
-                    });
+                    snapshot.forEach((doc) => msgs.push({ id: doc.id, ...doc.data() }));
                     msgs.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
                     setMessages(msgs.slice(-50));
-                }, (error) => {
-                    console.error("Chat listener error:", error);
                 });
-
                 return () => unsubscribe();
             }, [user, db, appId]);
 
-            useEffect(() => {
-                if (isOpen) {
-                    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-                }
-            }, [messages, isOpen]);
+            useEffect(() => { if(isOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isOpen]);
 
             const saveNickname = () => {
                 if(tempName.trim()) {
@@ -319,10 +288,8 @@
             const sendMessage = async (e) => {
                 e.preventDefault();
                 if (!inputText.trim() || !user) return;
-
                 const text = inputText.trim();
                 setInputText("");
-
                 try {
                     await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages'), {
                         text: text,
@@ -331,104 +298,60 @@
                         isSystem: false,
                         createdAt: window.FB.serverTimestamp()
                     });
-                } catch (err) {
-                    console.error("Send failed", err);
-                }
+                } catch (err) { console.error("Send failed", err); }
             };
 
             return (
-                <div className={`fixed bottom-4 right-4 z-50 flex flex-col items-end transition-all duration-300 ${isOpen ? 'translate-y-0' : 'translate-y-0'}`}>
-                    
+                <div className={`fixed bottom-20 sm:bottom-4 right-4 z-50 flex flex-col items-end transition-all duration-300`}>
                     {isOpen && (
-                        <div className="mb-3 w-80 h-96 glass-panel flex flex-col overflow-hidden border-0 shadow-2xl animate-fade-in-up bg-slate-900/90">
-                            {/* Header */}
-                            <div className="bg-indigo-600/80 p-3 flex justify-between items-center">
-                                <span className="text-white font-bold text-sm flex items-center gap-2">
+                        <div className="mb-3 w-72 sm:w-80 h-80 sm:h-96 glass-panel flex flex-col overflow-hidden border-0 shadow-2xl animate-fade-in-up bg-slate-900/95">
+                            <div className="bg-indigo-600/80 p-2 sm:p-3 flex justify-between items-center">
+                                <span className="text-white font-bold text-xs sm:text-sm flex items-center gap-2">
                                     <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                                     摸鱼聊天室
                                 </span>
-                                <button onClick={() => setIsOpen(false)} className="text-white/70 hover:text-white">
-                                    ✕
-                                </button>
+                                <button onClick={() => setIsOpen(false)} className="text-white/70 hover:text-white px-2">✕</button>
                             </div>
-
-                            {/* Name Setup */}
                             {isEditingName ? (
-                                <div className="absolute inset-0 z-20 bg-slate-900/95 flex flex-col items-center justify-center p-6">
-                                    <h3 className="text-yellow-400 font-bold mb-4">起个好听的名字</h3>
-                                    <input 
-                                        type="text" 
-                                        value={tempName}
-                                        onChange={(e) => setTempName(e.target.value)}
-                                        placeholder="例如: 赌神阿强"
-                                        className="w-full bg-white/10 border border-indigo-500 rounded-xl px-4 py-2 text-white mb-4 text-center focus:outline-none"
-                                    />
-                                    <button onClick={saveNickname} className="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2 rounded-full font-bold shadow-lg">
-                                        开始聊天
-                                    </button>
+                                <div className="absolute inset-0 z-20 bg-slate-900/95 flex flex-col items-center justify-center p-4">
+                                    <h3 className="text-yellow-400 font-bold mb-4 text-sm">起个名字</h3>
+                                    <input type="text" value={tempName} onChange={(e)=>setTempName(e.target.value)} placeholder="例如: 赌神阿强" className="w-full bg-white/10 border border-indigo-500 rounded-xl px-4 py-2 text-white mb-4 text-center focus:outline-none text-sm" />
+                                    <button onClick={saveNickname} className="bg-indigo-500 text-white px-6 py-2 rounded-full font-bold text-sm">开始</button>
                                 </div>
                             ) : (
-                                <div className="bg-indigo-900/30 px-3 py-2 text-[10px] text-indigo-200 flex justify-between cursor-pointer hover:bg-indigo-900/50 border-b border-white/5" onClick={() => setIsEditingName(true)}>
-                                    <span>当前: {nickname}</span>
-                                    <span>(点我改名)</span>
+                                <div className="bg-indigo-900/30 px-3 py-2 text-[10px] sm:text-xs text-indigo-200 flex justify-between cursor-pointer hover:bg-indigo-900/50 border-b border-white/5" onClick={()=>setIsEditingName(true)}>
+                                    <span>当前: {nickname}</span><span>(改名)</span>
                                 </div>
                             )}
-
-                            {/* Messages */}
-                            <div className="flex-1 overflow-y-auto p-3 space-y-3 chat-scroll">
-                                {messages.length === 0 && (
-                                    <div className="text-center text-white/30 text-xs mt-10">快来发第一条消息!</div>
-                                )}
+                            <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2 chat-scroll">
                                 {messages.map((msg) => {
                                     const isMe = msg.senderId === user?.uid.slice(0, 5);
+                                    const isSystem = msg.isSystem;
+                                    if (isSystem) return (
+                                        <div key={msg.id} className="flex justify-center my-2">
+                                            <span className="bg-yellow-500/20 text-yellow-300 text-[10px] px-3 py-1 rounded-full border border-yellow-500/30 font-bold shadow-[0_0_10px_rgba(234,179,8,0.2)]">
+                                                📣 {msg.text}
+                                            </span>
+                                        </div>
+                                    );
                                     return (
                                         <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                                            <span className="text-[10px] text-white/40 mb-1 px-1">
-                                                {msg.senderName}
-                                            </span>
-                                            <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm break-words shadow-sm ${
-                                                isMe 
-                                                ? 'bg-indigo-500 text-white rounded-tr-none' 
-                                                : 'bg-slate-700 text-gray-200 rounded-tl-none'
-                                            }`}>
-                                                {msg.text}
-                                            </div>
+                                            <span className="text-[10px] text-white/40 mb-0.5 px-1">{msg.senderName}</span>
+                                            <div className={`max-w-[85%] px-3 py-1.5 rounded-2xl text-xs break-words ${isMe ? 'bg-indigo-500 text-white rounded-tr-none' : 'bg-slate-700 text-gray-200 rounded-tl-none'}`}>{msg.text}</div>
                                         </div>
                                     );
                                 })}
                                 <div ref={messagesEndRef} />
                             </div>
-
-                            {/* Input */}
                             <form onSubmit={sendMessage} className="p-2 bg-slate-800/50 border-t border-white/5 flex gap-2">
-                                <input 
-                                    type="text" 
-                                    value={inputText}
-                                    onChange={(e) => setInputText(e.target.value)}
-                                    placeholder="说点什么..."
-                                    disabled={isEditingName}
-                                    className="flex-1 bg-slate-900/50 border border-white/10 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50"
-                                />
-                                <button type="submit" disabled={isEditingName} className="bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-full transition-colors disabled:opacity-50 shadow-lg">
-                                    <lucide-icon name="send" size="16"></lucide-icon>
-                                </button>
+                                <input type="text" value={inputText} onChange={(e)=>setInputText(e.target.value)} placeholder="说点什么..." disabled={isEditingName} className="flex-1 bg-slate-900/50 border border-white/10 rounded-full px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500" />
+                                <button type="submit" disabled={isEditingName} className="bg-indigo-500 text-white p-1.5 rounded-full"><lucide-icon name="send" size="14"></lucide-icon></button>
                             </form>
                         </div>
                     )}
-
-                    {/* 悬浮按钮 */}
-                    <button 
-                        onClick={() => setIsOpen(!isOpen)}
-                        className="w-14 h-14 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center hover:scale-110 transition-transform shadow-lg group border-2 border-white/20"
-                    >
-                        {isOpen ? (
-                            <span className="text-xl font-bold">✕</span>
-                        ) : (
-                            <lucide-icon name="message-circle" size="24"></lucide-icon>
-                        )}
-                        {!isOpen && (
-                            <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-indigo-900 animate-bounce"></span>
-                        )}
+                    <button onClick={() => setIsOpen(!isOpen)} className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-indigo-500 text-white flex items-center justify-center hover:scale-110 transition-transform shadow-lg group border-2 border-white/20 overflow-hidden relative">
+                        {isOpen ? <span className="text-xl font-bold">✕</span> : <img src="1.jpg" alt="Chat" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/724/724715.png'}} />}
+                        {!isOpen && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-indigo-900 animate-bounce"></span>}
                     </button>
                 </div>
             );
@@ -437,7 +360,6 @@
         // --- 单个3D骰子组件 ---
         const Die3D = ({ value, rolling }) => {
             const [transform, setTransform] = useState('');
-            
             useEffect(() => {
                 if (rolling) {
                     const x = Math.random() * 1440 - 720; 
@@ -453,30 +375,25 @@
                         case 5: rX = -90; rY = 0; break;
                         case 6: rX = 90; rY = 0; break;
                     }
-                    // 增加更多旋转圈数，让它停下来更平滑
-                    setTransform(`rotateX(${rX + 1440}deg) rotateY(${rY + 1440}deg)`); 
+                    // 随机一点点偏移，让它看起来不那么死板
+                    const wobbleX = (Math.random() - 0.5) * 10;
+                    const wobbleY = (Math.random() - 0.5) * 10;
+                    setTransform(`rotateX(${rX + 1440 + wobbleX}deg) rotateY(${rY + 1440 + wobbleY}deg)`); 
                 }
             }, [value, rolling]);
 
             const Face = ({ dots, className }) => (
                 <div className={`face ${className}`}>
-                    <div className="relative w-full h-full grid grid-cols-3 grid-rows-3 p-1.5">
+                    <div className="relative w-full h-full grid grid-cols-3 grid-rows-3 p-1 sm:p-1.5">
                         {dots.map((pos, i) => (
-                            <div key={i} className={`dot ${pos.val === 'center' ? 'red' : ''}`} 
-                                 style={{ 
-                                     gridColumn: pos.col, 
-                                     gridRow: pos.row,
-                                     alignSelf: 'center',
-                                     justifySelf: 'center'
-                                 }} 
-                            />
+                            <div key={i} className={`dot ${pos.val === 'center' ? 'red' : ''}`} style={{ gridColumn: pos.col, gridRow: pos.row, alignSelf: 'center', justifySelf: 'center' }} />
                         ))}
                     </div>
                 </div>
             );
 
             return (
-                <div className="scene mx-2 sm:mx-4 scale-75 sm:scale-100">
+                <div className="scene mx-2 sm:mx-3">
                     <div className="cube-wrapper" style={{ transform: transform }}>
                         <div className="cube">
                             <Face className="front" dots={[{col:2,row:2,val:'center'}]} /> 
@@ -492,16 +409,19 @@
             );
         };
 
-        // --- 路单小圆点 ---
         const RoadMapDot = ({ result }) => {
-            let color = 'bg-gray-500';
+            let color = 'bg-slate-500';
             let text = '?';
             if (result === 'big') { color = 'bg-red-500'; text = '大'; }
             if (result === 'small') { color = 'bg-blue-500'; text = '小'; }
-            if (result === 'triple') { color = 'bg-green-500'; text = '围'; }
-            
+            if (result === 'triple') { color = 'bg-green-500'; text = '豹'; }
+            return <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full ${color} flex items-center justify-center text-[10px] text-white font-bold shadow-sm border border-white/10`}>{text}</div>;
+        };
+
+        // --- 浮动文字组件 ---
+        const FloatingText = ({ text, x, y }) => {
             return (
-                <div className={`w-6 h-6 rounded-full ${color} flex items-center justify-center text-[10px] text-white font-bold shadow-sm mb-1 border border-white/10`}>
+                <div className="floating-text" style={{ left: x, top: y, fontSize: '24px' }}>
                     {text}
                 </div>
             );
@@ -518,6 +438,7 @@
             const [selectedChip, setSelectedChip] = useState(100);
             const [nickname, setNickname] = useState('');
             const [winningZones, setWinningZones] = useState([]);
+            const [floatingTexts, setFloatingTexts] = useState([]); // 赢钱飘字状态
             
             const [user, setUser] = useState(null);
             const [firebaseReady, setFirebaseReady] = useState(false);
@@ -527,22 +448,15 @@
             const appIdRef = useRef('default-app-id'); 
 
             useEffect(() => {
-                const savedBalance = localStorage.getItem('dice_game_balance');
-                if (savedBalance) setBalance(parseInt(savedBalance));
-                
                 const savedName = localStorage.getItem('dice_game_nickname');
                 if (savedName) setNickname(savedName);
             }, []);
 
-            useEffect(() => {
-                localStorage.setItem('dice_game_balance', balance.toString());
-            }, [balance]);
-
+            // 初始化 Firebase
             useEffect(() => {
                 const initFirebase = async () => {
                     if (!window.FB) return;
-
-                    // --- 配置区域 ---
+                    // 这里的配置已经是你提供的配置了
                     const config = {
                         apiKey: "AIzaSyCfoqSV5dI6-dzrvfx1e1NHnbpwlBTloKw",
                         authDomain: "haer-870de.firebaseapp.com",
@@ -552,62 +466,69 @@
                         appId: "1:397525543796:web:c503e7ebb1586335615a21",
                         measurementId: "G-08352H7R4G"
                     };
-                    // ----------------
 
                     if (config && config.apiKey) {
                         try {
                             let app;
-                            try {
-                                app = window.FB.initializeApp(config);
-                            } catch(e) {
-                                console.log("App init skip");
-                                return;
-                            }
-
+                            try { app = window.FB.initializeApp(config); } catch(e) { return; }
                             authRef.current = window.FB.getAuth(app);
                             dbRef.current = window.FB.getFirestore(app);
-
                             await window.FB.signInAnonymously(authRef.current);
-
                             window.FB.onAuthStateChanged(authRef.current, (u) => {
-                                if (u) {
-                                    setUser(u);
-                                    setFirebaseReady(true);
-                                }
+                                if (u) { setUser(u); setFirebaseReady(true); }
                             });
-                        } catch (e) {
-                            console.error("Firebase Init Error:", e);
-                        }
+                        } catch (e) { console.error("Firebase Init Error:", e); }
                     }
                 };
-                
                 setTimeout(initFirebase, 100);
             }, []);
 
+            // 余额同步逻辑
+            useEffect(() => {
+                if (!user || !dbRef.current) return;
+                const docRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'users', user.uid, 'data', 'account');
+                const unsubscribe = window.FB.onSnapshot(docRef, (doc) => {
+                    if (doc.exists()) {
+                        const data = doc.data();
+                        if (data.balance !== undefined) setBalance(data.balance);
+                    } else {
+                        window.FB.setDoc(docRef, { balance: 10000, createdAt: window.FB.serverTimestamp() }, { merge: true });
+                        setBalance(10000);
+                    }
+                });
+                return () => unsubscribe();
+            }, [user]);
+
+            const updateCloudBalance = async (newBalance) => {
+                if (!user || !dbRef.current) return;
+                try {
+                    const docRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'users', user.uid, 'data', 'account');
+                    await window.FB.updateDoc(docRef, { balance: newBalance });
+                } catch(e) { console.error("Save failed", e); }
+            };
 
             const placeBet = (type) => {
                 if (gameState !== 'idle') return;
-                if (balance < selectedChip) {
-                    alert("余额不足啦！去赢点回来！");
-                    return;
-                }
+                if (balance < selectedChip) { alert("余额不足啦！"); return; }
+                
                 AudioSynth.playChip();
-                setBalance(prev => prev - selectedChip);
-                setBets(prev => ({
-                    ...prev,
-                    [type]: prev[type] + selectedChip
-                }));
+                AudioSynth.vibrate(20); // 轻微震动
+
+                const newBalance = balance - selectedChip;
+                setBalance(newBalance);
+                updateCloudBalance(newBalance);
+                setBets(prev => ({ ...prev, [type]: prev[type] + selectedChip }));
             };
 
             const rollDice = () => {
-                if (bets.small === 0 && bets.big === 0 && bets.triple === 0) {
-                    alert("请先下注哦！");
-                    return;
-                }
+                if (bets.small === 0 && bets.big === 0 && bets.triple === 0) { alert("请先下注哦！"); return; }
                 
                 setGameState('rolling');
                 setWinningZones([]); 
+                setFloatingTexts([]); // 清除之前的飘字
+                
                 AudioSynth.playRoll();
+                AudioSynth.vibrate(100); // 开始摇动震动
                 
                 setTimeout(() => {
                     const d1 = Math.floor(Math.random() * 6) + 1;
@@ -615,59 +536,81 @@
                     const d3 = Math.floor(Math.random() * 6) + 1;
                     const total = d1 + d2 + d3;
                     const isTriple = (d1 === d2 && d2 === d3);
+                    let mainResult = !isTriple ? (total >= 11 ? 'big' : 'small') : 'triple';
                     
-                    let mainResult = 'triple';
-                    if (!isTriple) {
-                        mainResult = (total >= 11 && total <= 17) ? 'big' : 'small';
-                    }
-
                     setDice([d1, d2, d3]);
-                    
-                    setTimeout(() => {
-                        handleResult(d1, d2, d3, total, mainResult, isTriple);
-                    }, 1200); 
-                    
+                    setTimeout(() => handleResult(d1, d2, d3, total, mainResult, isTriple), 1200); 
                 }, 1500); 
             };
 
             const handleResult = (d1, d2, d3, total, mainResult, isTriple) => {
                 setGameState('revealed');
-                
                 let totalWin = 0;
                 const winners = [];
+                const newFloatingTexts = [];
 
+                // 检查输赢
                 if (!isTriple && total >= 4 && total <= 10) {
-                    if (bets.small > 0) totalWin += bets.small * 2;
+                    if (bets.small > 0) {
+                        const win = bets.small * 2;
+                        totalWin += win;
+                        // 添加飘字: 随机一点位置，避免重叠
+                        newFloatingTexts.push({ id: Date.now() + 's', text: `+$${win}`, x: '20%', y: '50%' });
+                    }
                     winners.push('small');
                 }
-
                 if (!isTriple && total >= 11 && total <= 17) {
-                    if (bets.big > 0) totalWin += bets.big * 2;
+                    if (bets.big > 0) {
+                        const win = bets.big * 2;
+                        totalWin += win;
+                        newFloatingTexts.push({ id: Date.now() + 'b', text: `+$${win}`, x: '70%', y: '50%' });
+                    }
                     winners.push('big');
                 }
-
                 if (isTriple) {
-                    if (bets.triple > 0) totalWin += bets.triple * 25;
+                    if (bets.triple > 0) {
+                        const win = bets.triple * 25;
+                        totalWin += win;
+                        newFloatingTexts.push({ id: Date.now() + 't', text: `+$${win}`, x: '45%', y: '40%' });
+                    }
                     winners.push('triple');
+
+                    // --- 豹子全服通告 ---
+                    if (firebaseReady && user) {
+                        window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), {
+                            text: `恭喜 ${nickname || '神秘人'} 押中豹子！发财啦！`,
+                            senderId: 'SYSTEM',
+                            senderName: '系统',
+                            isSystem: true,
+                            createdAt: window.FB.serverTimestamp()
+                        });
+                    }
                 }
 
                 setWinningZones(winners);
 
                 if (totalWin > 0) {
-                    setBalance(prev => prev + totalWin);
+                    const newBalance = balance + totalWin;
+                    setBalance(newBalance);
+                    updateCloudBalance(newBalance);
+                    
                     AudioSynth.playWin();
+                    AudioSynth.vibrate([100, 50, 100, 50, 200]); // 赢钱节奏震动
                     setShowParticles(true);
+                    setFloatingTexts(newFloatingTexts); // 显示飘字
+
                     setTimeout(() => setShowParticles(false), 3000);
                 } else {
                     AudioSynth.playLose();
+                    AudioSynth.vibrate(300); // 输钱长震动
                 }
 
                 setHistory(prev => [...prev, { result: mainResult, total, dice: [d1, d2, d3] }].slice(-20)); 
-
                 setTimeout(() => {
                     setGameState('idle');
                     setBets({ small: 0, big: 0, triple: 0 });
                     setWinningZones([]);
+                    setFloatingTexts([]);
                 }, 3500);
             };
 
@@ -675,164 +618,103 @@
             const totalBetAmount = bets.small + bets.big + bets.triple;
 
             return (
-                <div className="relative w-full h-screen flex flex-col items-center justify-between pb-6 game-bg overflow-hidden text-white">
+                <div className="relative w-full h-full flex flex-col items-center justify-between pb-4 game-bg overflow-hidden text-white">
                     <div className="absolute inset-0 game-overlay pointer-events-none"></div>
                     <ParticleSystem active={showParticles} />
+                    
+                    {/* 赢钱飘字层 */}
+                    <div className="absolute inset-0 pointer-events-none z-40">
+                        {floatingTexts.map(ft => (
+                            <FloatingText key={ft.id} text={ft.text} x={ft.x} y={ft.y} />
+                        ))}
+                    </div>
                     
                     {firebaseReady && (
                         <ChatRoom user={user} db={dbRef.current} appId={appIdRef.current} nickname={nickname} setNickname={setNickname} />
                     )}
 
                     {/* Header */}
-                    <div className="z-10 w-full max-w-4xl p-4 flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                            {/* 猫猫头像 (这里使用一个圆形的div模拟，您替换src即可) */}
-                            <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/20 shadow-lg bg-white">
+                    <div className="z-10 w-full max-w-4xl p-3 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden border-2 border-white/20 shadow-lg bg-white">
                                 <img src="1.jpg" alt="Avatar" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
                             </div>
                             <div>
-                                <h1 className="font-cute text-3xl text-yellow-300 tracking-wider drop-shadow-lg">多宝骰子</h1>
-                                <p className="text-indigo-200 text-xs flex gap-2">
-                                    {nickname ? `你好呀, ${nickname}` : '欢迎光临~'}
+                                <h1 className="font-cute text-2xl sm:text-3xl text-yellow-300 tracking-wider drop-shadow-lg">多宝骰子</h1>
+                                <p className="text-indigo-200 text-[10px] sm:text-xs flex gap-1 items-center opacity-80">
+                                    ID: <span className="font-mono bg-white/10 px-1 rounded">{user ? user.uid.slice(0,6) : '...'}</span>
+                                    {nickname ? ` | ${nickname}` : ''}
                                 </p>
                             </div>
                         </div>
-                        
-                        <div className="glass-panel px-4 py-2 flex items-center gap-2">
-                            <span className="text-yellow-400 text-xl">💰</span>
-                            <span className="text-2xl font-mono font-bold text-white">
+                        <div className="glass-panel px-3 py-1.5 flex items-center gap-2">
+                            <span className="text-yellow-400 text-lg">💰</span>
+                            <span className="text-xl sm:text-2xl font-mono font-bold text-white">
                                 {balance.toLocaleString()}
                             </span>
                         </div>
                     </div>
 
-                    {/* 游戏主区域 */}
-                    <div className="z-10 flex-1 flex flex-col justify-center items-center w-full">
-                        {/* 骰盅区域 */}
-                        <div className="relative w-[90%] max-w-lg h-48 sm:h-64 flex justify-center items-center bg-slate-900/40 rounded-[3rem] border border-white/10 shadow-2xl backdrop-blur-sm">
-                            {/* 提示文字 */}
+                    {/* 游戏主区域 - 骰盅 */}
+                    <div className="z-10 flex-1 flex flex-col justify-center items-center w-full -mt-10 sm:mt-0">
+                        <div className="relative w-[85%] max-w-md h-40 sm:h-60 flex justify-center items-center bg-slate-900/40 rounded-[2.5rem] border border-white/10 shadow-2xl backdrop-blur-sm dome-glass">
+                            {/* 结果提示 */}
                             {gameState === 'revealed' && (
-                                <div className="absolute -top-16 animate-bounce z-20 w-full text-center">
-                                    <span className={`font-cute text-4xl drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] ${
-                                        winningZones.includes('big') ? 'text-red-400' : (winningZones.includes('small') ? 'text-blue-400' : 'text-green-400')
-                                    }`}>
+                                <div className="absolute -top-14 sm:-top-16 animate-bounce z-30 w-full text-center">
+                                    <span className={`font-cute text-4xl sm:text-5xl drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] stroke-2 ${winningZones.includes('big') ? 'text-red-400' : (winningZones.includes('small') ? 'text-blue-400' : 'text-green-400')}`}>
                                         {dice.reduce((a,b)=>a+b,0)}点! 
-                                        {winningZones.includes('triple') ? ' 豹子!' : (winningZones.includes('big') ? ' 大!' : ' 小!')}
                                     </span>
+                                    <div className="text-sm sm:text-base font-bold text-white/80 mt-1">
+                                        {winningZones.includes('triple') ? '全围豹子!' : (winningZones.includes('big') ? '大胜!' : '小胜!')}
+                                    </div>
                                 </div>
                             )}
-
                             <Die3D value={dice[0]} rolling={gameState === 'rolling'} />
                             <Die3D value={dice[1]} rolling={gameState === 'rolling'} />
                             <Die3D value={dice[2]} rolling={gameState === 'rolling'} />
                         </div>
-                        
-                        {/* 珠盘路 (历史记录) */}
-                        <div className="mt-6 h-8 flex gap-1.5 items-end opacity-90">
-                            {history.map((h, idx) => (
-                                <RoadMapDot key={idx} result={h.result} />
-                            ))}
+                        {/* 珠盘路 */}
+                        <div className="mt-5 h-6 flex gap-1 items-end opacity-90">
+                            {history.map((h, idx) => <RoadMapDot key={idx} result={h.result} />)}
                         </div>
                     </div>
 
                     {/* 底部操作区 */}
-                    <div className="z-20 w-full max-w-4xl px-4 mb-2 sm:mb-0">
-                        {/* 下注区 */}
-                        <div className="flex gap-3 sm:gap-5 mb-5 h-36 sm:h-44">
-                            
-                            {/* 押小 */}
-                            <button 
-                                disabled={gameState !== 'idle'}
-                                onClick={() => placeBet('small')}
-                                className={`
-                                    flex-1 relative group rounded-3xl border-b-8 transition-all duration-150 active:border-b-0 active:translate-y-2
-                                    flex flex-col items-center justify-center gap-1 shadow-xl
-                                    ${winningZones.includes('small') ? 'animate-win z-30 ring-4 ring-yellow-400' : ''}
-                                    ${bets.small > 0 ? 'bg-blue-500 border-blue-700' : 'bg-slate-700 border-slate-800 hover:bg-slate-600'}
-                                `}
-                            >
-                                <span className="font-cute text-5xl sm:text-7xl text-white drop-shadow-md">小</span>
-                                <span className="text-white/60 text-xs font-bold">4-10</span>
-                                {bets.small > 0 && (
-                                    <div className="absolute -top-3 bg-yellow-400 text-black font-bold px-3 py-1 rounded-full shadow-md text-xs">
-                                        ${bets.small}
-                                    </div>
-                                )}
+                    <div className="z-20 w-full max-w-4xl px-3 mb-2">
+                        {/* 下注按钮 */}
+                        <div className="flex gap-2 sm:gap-4 mb-3 h-32 sm:h-40">
+                            {/* 小 */}
+                            <button disabled={gameState !== 'idle'} onClick={() => placeBet('small')} className={`flex-1 relative group rounded-2xl sm:rounded-3xl border-b-[6px] transition-all duration-100 active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center gap-0.5 shadow-xl ${winningZones.includes('small') ? 'animate-win z-30 ring-4 ring-yellow-400' : ''} ${bets.small > 0 ? 'bg-blue-600 border-blue-800' : 'bg-slate-700 border-slate-900'}`}>
+                                <span className="font-cute text-5xl sm:text-6xl text-white drop-shadow-md">小</span>
+                                <span className="text-white/60 text-[10px] sm:text-xs font-bold">4-10</span>
+                                {bets.small > 0 && <div className="absolute -top-2 bg-yellow-400 text-black font-bold px-2 py-0.5 rounded-full shadow-md text-[10px] sm:text-xs">${bets.small}</div>}
                             </button>
 
-                            {/* 押豹子 (全围) */}
-                            <button 
-                                disabled={gameState !== 'idle'}
-                                onClick={() => placeBet('triple')}
-                                className={`
-                                    w-24 sm:w-36 relative group rounded-3xl border-b-8 transition-all duration-150 active:border-b-0 active:translate-y-2
-                                    flex flex-col items-center justify-center gap-1 shadow-xl
-                                    ${winningZones.includes('triple') ? 'animate-win z-30 ring-4 ring-yellow-400' : ''}
-                                    ${bets.triple > 0 ? 'bg-green-500 border-green-700' : 'bg-slate-700 border-slate-800 hover:bg-slate-600'}
-                                `}
-                            >
-                                <div className="text-center leading-tight">
-                                    <span className="font-cute text-2xl sm:text-4xl text-white drop-shadow-md block">豹子</span>
-                                    <span className="text-[10px] text-white/60 font-bold block">1赔24</span>
-                                </div>
-                                {bets.triple > 0 && (
-                                    <div className="absolute -top-3 bg-yellow-400 text-black font-bold px-2 py-1 rounded-full shadow-md text-xs">
-                                        ${bets.triple}
-                                    </div>
-                                )}
+                            {/* 豹子 */}
+                            <button disabled={gameState !== 'idle'} onClick={() => placeBet('triple')} className={`w-20 sm:w-28 relative group rounded-2xl sm:rounded-3xl border-b-[6px] transition-all duration-100 active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center gap-0.5 shadow-xl ${winningZones.includes('triple') ? 'animate-win z-30 ring-4 ring-yellow-400' : ''} ${bets.triple > 0 ? 'bg-green-600 border-green-800' : 'bg-slate-700 border-slate-900'}`}>
+                                <span className="font-cute text-xl sm:text-3xl text-white drop-shadow-md block">豹子</span>
+                                <span className="text-[10px] text-white/60 font-bold block">1:24</span>
+                                {bets.triple > 0 && <div className="absolute -top-2 bg-yellow-400 text-black font-bold px-2 py-0.5 rounded-full shadow-md text-[10px] sm:text-xs">${bets.triple}</div>}
                             </button>
 
-                            {/* 押大 */}
-                            <button 
-                                disabled={gameState !== 'idle'}
-                                onClick={() => placeBet('big')}
-                                className={`
-                                    flex-1 relative group rounded-3xl border-b-8 transition-all duration-150 active:border-b-0 active:translate-y-2
-                                    flex flex-col items-center justify-center gap-1 shadow-xl
-                                    ${winningZones.includes('big') ? 'animate-win z-30 ring-4 ring-yellow-400' : ''}
-                                    ${bets.big > 0 ? 'bg-red-500 border-red-700' : 'bg-slate-700 border-slate-800 hover:bg-slate-600'}
-                                `}
-                            >
-                                <span className="font-cute text-5xl sm:text-7xl text-white drop-shadow-md">大</span>
-                                <span className="text-white/60 text-xs font-bold">11-17</span>
-                                {bets.big > 0 && (
-                                    <div className="absolute -top-3 bg-yellow-400 text-black font-bold px-3 py-1 rounded-full shadow-md text-xs">
-                                        ${bets.big}
-                                    </div>
-                                )}
+                            {/* 大 */}
+                            <button disabled={gameState !== 'idle'} onClick={() => placeBet('big')} className={`flex-1 relative group rounded-2xl sm:rounded-3xl border-b-[6px] transition-all duration-100 active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center gap-0.5 shadow-xl ${winningZones.includes('big') ? 'animate-win z-30 ring-4 ring-yellow-400' : ''} ${bets.big > 0 ? 'bg-red-600 border-red-800' : 'bg-slate-700 border-slate-900'}`}>
+                                <span className="font-cute text-5xl sm:text-6xl text-white drop-shadow-md">大</span>
+                                <span className="text-white/60 text-[10px] sm:text-xs font-bold">11-17</span>
+                                {bets.big > 0 && <div className="absolute -top-2 bg-yellow-400 text-black font-bold px-2 py-0.5 rounded-full shadow-md text-[10px] sm:text-xs">${bets.big}</div>}
                             </button>
                         </div>
 
-                        {/* 底部控制条 */}
-                        <div className="glass-panel rounded-2xl p-2 sm:p-3 flex justify-between items-center gap-4">
-                            {/* 筹码 */}
-                            <div className="flex gap-2 sm:gap-3 pl-2">
+                        {/* 控制条 */}
+                        <div className="glass-panel rounded-xl p-2 flex justify-between items-center gap-3">
+                            <div className="flex gap-2 pl-1">
                                 {chips.map(val => (
-                                    <button 
-                                        key={val}
-                                        onClick={() => setSelectedChip(val)}
-                                        className={`
-                                            w-12 h-12 sm:w-14 sm:h-14 rounded-full border-4 border-dashed flex items-center justify-center
-                                            font-bold text-xs sm:text-sm shadow-md transition-transform active:scale-90
-                                            ${selectedChip === val ? 'border-yellow-400 bg-yellow-500 text-black -translate-y-2' : 'border-slate-500 bg-slate-700 text-slate-300 hover:border-slate-400'}
-                                        `}
-                                    >
+                                    <button key={val} onClick={() => setSelectedChip(val)} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-[3px] border-dashed flex items-center justify-center font-bold text-[10px] sm:text-xs shadow-md transition-transform active:scale-90 ${selectedChip === val ? 'border-yellow-400 bg-yellow-500 text-black -translate-y-1' : 'border-slate-500 bg-slate-700 text-slate-300'}`}>
                                         {val}
                                     </button>
                                 ))}
                             </div>
-
-                            {/* 开始按钮 */}
-                            <button 
-                                onClick={rollDice}
-                                disabled={gameState === 'rolling' || totalBetAmount === 0}
-                                className={`
-                                    flex-1 py-3 sm:py-4 rounded-xl font-cute text-2xl tracking-widest shadow-lg transition-all active:scale-95
-                                    ${gameState === 'rolling' 
-                                        ? 'bg-slate-700 text-slate-500 cursor-not-allowed' 
-                                        : (totalBetAmount > 0 ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white hover:shadow-yellow-500/50 animate-pulse-gold' : 'bg-slate-600 text-slate-400')}
-                                `}
-                            >
+                            <button onClick={rollDice} disabled={gameState === 'rolling' || totalBetAmount === 0} className={`flex-1 py-2.5 sm:py-3 rounded-lg font-cute text-xl sm:text-2xl tracking-widest shadow-lg transition-all active:scale-95 ${gameState === 'rolling' ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : (totalBetAmount > 0 ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white hover:shadow-yellow-500/50 animate-pulse-gold' : 'bg-slate-600 text-slate-400')}`}>
                                 {gameState === 'rolling' ? '好运来...' : '开 摇 !'}
                             </button>
                         </div>
