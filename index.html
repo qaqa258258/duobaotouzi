@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>多宝骰子 (Duo Bao Dice) - 萌宠版</title>
+    <title>多宝骰子 (Duo Bao Dice) - 丝滑暴富版</title>
     
     <!-- 引入 React 和 Tailwind -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -21,17 +21,25 @@
         #root { height: 100%; }
         .font-cute { font-family: 'Zcool KuaiLe', sans-serif; }
 
-        /* 3D 骰子相关 */
+        /* --- 3D 骰子引擎 (重构版) --- */
         .scene { perspective: 1200px; display: flex; justify-content: center; align-items: center; }
-        .cube-wrapper { position: relative; transform-style: preserve-3d; width: 60px; height: 60px; transition: transform 1.2s cubic-bezier(0.19, 1, 0.22, 1); }
+        
+        .cube-wrapper { 
+            position: relative; 
+            transform-style: preserve-3d; 
+            width: 60px; height: 60px; 
+            /* 默认无过渡，由动画控制 */
+        }
         @media (min-width: 640px) { .cube-wrapper { width: 80px; height: 80px; } }
+
         .cube { width: 100%; height: 100%; position: absolute; transform-style: preserve-3d; }
-        /* 骰子变得粉嫩 */
-        .face { position: absolute; width: 60px; height: 60px; background: linear-gradient(145deg, #fff5f7, #ffeef0); border-radius: 16px; box-shadow: inset 0 0 10px rgba(255,182,193,0.3); display: flex; justify-content: center; align-items: center; backface-visibility: hidden; }
-        @media (min-width: 640px) { .face { width: 80px; height: 80px; border-radius: 20px; } }
-        /* 点数像肉垫颜色 */
-        .dot { width: 12px; height: 12px; background: #ff9eb5; border-radius: 50%; box-shadow: inset 1px 1px 2px rgba(0,0,0,0.1); }
-        .dot.red { background: #ff5e78; box-shadow: inset 1px 1px 2px rgba(100,0,0,0.1); }
+        
+        /* 骰子材质优化 - 减少阴影模糊半径以提升手机性能 */
+        .face { position: absolute; width: 60px; height: 60px; background: linear-gradient(145deg, #fff5f7, #ffeef0); border-radius: 14px; box-shadow: inset 0 0 5px rgba(255,182,193,0.5); display: flex; justify-content: center; align-items: center; backface-visibility: hidden; }
+        @media (min-width: 640px) { .face { width: 80px; height: 80px; border-radius: 18px; } }
+        
+        .dot { width: 12px; height: 12px; background: #ff9eb5; border-radius: 50%; box-shadow: inset 1px 1px 1px rgba(0,0,0,0.1); }
+        .dot.red { background: #ff5e78; }
         @media (min-width: 640px) { .dot { width: 16px; height: 16px; } }
         
         /* 3D构建 */
@@ -49,57 +57,43 @@
             .cube-wrapper .face.top { transform: rotateX(90deg) translateZ(40px); }
             .cube-wrapper .face.bottom { transform: rotateX(-90deg) translateZ(40px); }
         }
-        .shadow-spot { position: absolute; width: 60px; height: 60px; background: radial-gradient(rgba(100,0,50,0.2), transparent 70%); transform: rotateX(90deg) translateZ(-50px); filter: blur(8px); opacity: 0.6; transition: all 0.3s; }
+
+        /* 阴影 */
+        .shadow-spot { position: absolute; width: 60px; height: 60px; background: radial-gradient(rgba(100,0,50,0.2), transparent 60%); transform: rotateX(90deg) translateZ(-50px); filter: blur(4px); opacity: 0.6; transition: all 0.3s; }
         @media (min-width: 640px) { .shadow-spot { width: 80px; height: 80px; transform: translateZ(-65px); } }
 
-        /* 动画 */
+        /* --- 关键动画优化 --- */
+        /* 无限翻滚动画 - 解决卡顿的核心 */
+        @keyframes tumble {
+            0% { transform: rotateX(0) rotateY(0) rotateZ(0); }
+            100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(360deg); }
+        }
+        /* 刹车动画 - 出结果时的缓冲 */
+        .settling { transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
+        
+        /* 赢钱飘字 */
         @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-100px) scale(1.2); } }
-        .floating-text { position: absolute; font-weight: 900; font-family: 'Zcool KuaiLe', sans-serif; text-shadow: 0 2px 0px #fff, 0 4px 4px rgba(0,0,0,0.2); pointer-events: none; animation: floatUp 2s ease-out forwards; z-index: 50; white-space: nowrap; }
+        .floating-text { position: absolute; font-weight: 900; font-family: 'Zcool KuaiLe', sans-serif; text-shadow: 0 2px 0px #fff, 0 4px 4px rgba(0,0,0,0.2); pointer-events: none; animation: floatUp 2s ease-out forwards; z-index: 100; white-space: nowrap; }
         
-        @keyframes wiggle { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
-        @keyframes bounce-mascot { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        @keyframes crazy-shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-3px, -2px) rotate(-5deg); } 20% { transform: translate(-3px, 0px) rotate(5deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(5deg); } 50% { transform: translate(-1px, 2px) rotate(-5deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-5deg); } 80% { transform: translate(-1px, -1px) rotate(5deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-5deg); } }
-        
+        /* 荷官动画 */
+        @keyframes bounce-mascot { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @keyframes crazy-shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 50% { transform: translate(-1px, -2px) rotate(-2deg); } 100% { transform: translate(-1px, -1px) rotate(2deg); } }
         .mascot-idle { animation: bounce-mascot 3s infinite ease-in-out; }
-        .mascot-rolling { animation: crazy-shake 0.2s infinite; }
-        .mascot-win { animation: bounce-mascot 0.5s infinite ease-in-out; }
+        .mascot-rolling { animation: crazy-shake 0.1s infinite; }
+        .mascot-win { animation: bounce-mascot 0.4s infinite ease-in-out; }
 
-        @keyframes pulse-glow { 0% { box-shadow: 0 0 0 0 rgba(255, 192, 203, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 192, 203, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 192, 203, 0); } }
-        .animate-pulse-gold { animation: pulse-glow 1.5s infinite; }
-        
-        .animate-win { animation: wiggle 0.5s infinite; border-color: #fff !important; background-color: #ffbad2 !important; color: #881234 !important; }
+        .animate-win { animation: bounce-mascot 0.5s infinite; border-color: #fff !important; background-color: #ffbad2 !important; color: #881234 !important; transform: scale(1.05); z-index: 10; }
 
         /* 样式 */
         .cute-bg { background: linear-gradient(180deg, #41295a 0%, #2f0743 100%); }
-        .cute-overlay { background-image: radial-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px); background-size: 30px 30px, 20px 20px; background-position: 0 0, 10px 10px; opacity: 0.5; }
-        .glass-panel { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+        .cute-overlay { background-image: radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px); background-size: 20px 20px; opacity: 0.3; }
+        .glass-panel { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
         
-        .chat-scroll::-webkit-scrollbar { width: 0px; } 
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        .speech-bubble {
-            position: absolute;
-            background: #fff;
-            border-radius: 20px;
-            padding: 5px 10px;
-            font-size: 12px;
-            color: #333;
-            top: -30px;
-            left: 50%;
-            transform: translateX(-50%);
-            white-space: nowrap;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-            font-weight: bold;
-        }
-        .speech-bubble::after {
-            content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
-            border-width: 5px 5px 0; border-style: solid; border-color: #fff transparent transparent transparent;
-        }
-        .show-bubble { opacity: 1; top: -40px; }
+        .speech-bubble { position: absolute; background: #fff; border-radius: 20px; padding: 4px 8px; font-size: 12px; color: #333; top: -30px; left: 50%; transform: translateX(-50%); white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.1); opacity: 0; transition: opacity 0.3s; pointer-events: none; font-weight: bold; }
+        .show-bubble { opacity: 1; top: -35px; }
     </style>
 
     <script type="module">
@@ -114,7 +108,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- 萌萌音效 ---
+        // --- 音效 ---
         const AudioSynth = {
             ctx: null,
             init: () => { if (!AudioSynth.ctx) AudioSynth.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
@@ -123,48 +117,70 @@
                 osc.type = type; osc.frequency.value = freq; osc.connect(gain); gain.connect(AudioSynth.ctx.destination);
                 osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, AudioSynth.ctx.currentTime + duration); osc.stop(AudioSynth.ctx.currentTime + duration);
             },
-            playRoll: () => { for(let i=0; i<8; i++) setTimeout(() => AudioSynth.playTone(1200 + Math.random()*600, 'sine', 0.05), i * 50); }, // 快速高音
-            playWin: () => { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => setTimeout(() => AudioSynth.playTone(f, 'triangle', 0.3), i * 80)); }, // 欢快琶音
-            playLose: () => { [400, 300].forEach((f, i) => setTimeout(() => AudioSynth.playTone(f, 'sine', 0.4), i * 200)); }, // 呜呜
-            playChip: () => AudioSynth.playTone(2000, 'sine', 0.03), // 清脆
-            playMeow: () => { // 模拟喵叫 (简单版)
+            playRoll: () => { /* 摇骰子时由动画视觉主导，声音辅助 */ for(let i=0; i<5; i++) setTimeout(() => AudioSynth.playTone(800 + Math.random()*400, 'sine', 0.05), i * 80); },
+            playWin: () => { [523, 659, 784, 1046, 1318].forEach((f, i) => setTimeout(() => AudioSynth.playTone(f, 'triangle', 0.2), i * 80)); },
+            playJackpot: () => { 
+                [1000, 1200, 1500, 2000, 2500, 3000, 2500, 3000].forEach((f, i) => setTimeout(() => AudioSynth.playTone(f, 'square', 0.15), i * 60)); 
+            },
+            playLose: () => { AudioSynth.playTone(200, 'sawtooth', 0.3); },
+            playChip: () => AudioSynth.playTone(1800, 'sine', 0.05),
+            playMeow: () => { 
                 AudioSynth.init(); const osc = AudioSynth.ctx.createOscillator(); const gain = AudioSynth.ctx.createGain();
-                osc.type = 'triangle'; osc.frequency.setValueAtTime(800, AudioSynth.ctx.currentTime); osc.frequency.linearRampToValueAtTime(1200, AudioSynth.ctx.currentTime+0.1); osc.frequency.linearRampToValueAtTime(600, AudioSynth.ctx.currentTime+0.3);
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(900, AudioSynth.ctx.currentTime); osc.frequency.linearRampToValueAtTime(1300, AudioSynth.ctx.currentTime+0.15); osc.frequency.linearRampToValueAtTime(700, AudioSynth.ctx.currentTime+0.3);
                 osc.connect(gain); gain.connect(AudioSynth.ctx.destination); osc.start(); gain.gain.exponentialRampToValueAtTime(0.001, AudioSynth.ctx.currentTime + 0.3); osc.stop(AudioSynth.ctx.currentTime + 0.3);
             },
             vibrate: (pattern) => { if (navigator.vibrate) navigator.vibrate(pattern); }
         };
 
-        // --- Emoji 粒子雨 ---
-        const ParticleSystem = ({ active }) => {
+        // --- 烟花粒子 (暴富特效) ---
+        const FireworkSystem = ({ active }) => {
             const canvasRef = useRef(null);
             useEffect(() => {
                 if (!active) return;
                 const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
                 canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-                const emojis = ['🐱', '🐾', '💖', '✨', '🌸', '💰', '🐟'];
-                const particles = []; 
-                for(let i=0; i<60; i++) particles.push({ 
-                    x: Math.random() * canvas.width, y: canvas.height + Math.random() * 100, 
-                    vx: (Math.random()-0.5)*5, vy: -(Math.random()*5 + 5), 
-                    text: emojis[Math.floor(Math.random()*emojis.length)], size: Math.random()*20+20, life: 1.0 
-                });
+                const particles = [];
+                // 金色和红色粒子
+                const colors = ['#FFD700', '#FFA500', '#FF4500', '#FFFFFF']; 
+                
+                // 创建爆炸
+                for(let i=0; i<150; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 15 + 5;
+                    particles.push({
+                        x: canvas.width / 2, y: canvas.height / 2,
+                        vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        size: Math.random() * 5 + 2,
+                        life: 1.0,
+                        decay: Math.random() * 0.02 + 0.01
+                    });
+                }
+
                 const animate = () => {
-                    if (!canvas) return; ctx.clearRect(0, 0, canvas.width, canvas.height); let alive = false;
+                    if (!canvas) return;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.globalCompositeOperation = 'lighter';
+                    let alive = false;
                     particles.forEach(p => {
                         if(p.life > 0) {
-                            alive = true; p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life -= 0.01;
-                            ctx.font = `${p.size}px serif`; ctx.globalAlpha = p.life; ctx.fillText(p.text, p.x, p.y);
+                            alive = true;
+                            p.x += p.vx; p.y += p.vy;
+                            p.vx *= 0.95; p.vy *= 0.95; // 阻力
+                            p.vy += 0.2; // 重力
+                            p.life -= p.decay;
+                            ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+                            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
                         }
                     });
                     if (alive) requestAnimationFrame(animate); else ctx.clearRect(0, 0, canvas.width, canvas.height);
                 };
                 animate();
             }, [active]);
-            return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full pointer-events-none z-50" />;
+            return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full pointer-events-none z-[60]" />;
         };
 
-        // --- 聊天室 (带表情快捷键) ---
+        // --- 聊天室 ---
         const ChatRoom = ({ user, db, appId, nickname, setNickname, balance }) => {
             const [messages, setMessages] = useState([]);
             const [isOpen, setIsOpen] = useState(false);
@@ -187,28 +203,26 @@
             useEffect(() => { if(isOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isOpen]);
 
             const saveNickname = () => { if(tempName.trim()) { setNickname(tempName.trim()); setIsEditingName(false); localStorage.setItem('dice_game_nickname', tempName.trim()); } };
-            
             const sendMessage = async (textToSend) => {
                 const msg = textToSend || inputText.trim();
                 if (!msg || !user) return;
                 if(!textToSend) setInputText("");
                 try { await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages'), { text: msg, senderId: user.uid.slice(0, 5), senderName: nickname || `User ${user.uid.slice(0,3)}`, senderBalance: balance, isSystem: false, createdAt: window.FB.serverTimestamp() }); } catch (err) { }
             };
-
-            const quickEmojis = ["(≧∇≦)ﾉ", "🐟摸鱼中", "💰求包养", "😭输光了", "🐱喵喵喵", "🚀起飞"];
+            const quickEmojis = ["(≧∇≦)ﾉ", "🐟摸鱼", "💰发财", "😭破产", "🐱喵", "🚀666"];
 
             return (
-                <div className={`fixed bottom-20 sm:bottom-4 right-4 z-50 flex flex-col items-end transition-all duration-300`}>
+                <div className={`fixed bottom-24 right-4 z-50 flex flex-col items-end`}>
                     {isOpen && (
-                        <div className="mb-3 w-72 h-96 glass-panel flex flex-col overflow-hidden border-0 shadow-2xl animate-fade-in-up bg-slate-900/90">
+                        <div className="mb-3 w-72 h-80 glass-panel flex flex-col overflow-hidden border-0 shadow-2xl animate-fade-in-up bg-slate-900/90">
                             <div className="bg-pink-500/90 p-2 flex justify-between items-center">
-                                <span className="text-white font-bold text-xs flex items-center gap-2">💬 摸鱼频道</span>
-                                <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white px-2">✕</button>
+                                <span className="text-white font-bold text-xs">💬 快乐频道</span>
+                                <button onClick={() => setIsOpen(false)} className="text-white/80 px-2">✕</button>
                             </div>
                             {isEditingName ? (
                                 <div className="absolute inset-0 z-20 bg-slate-900/95 flex flex-col items-center justify-center p-4">
-                                    <input type="text" value={tempName} onChange={(e)=>setTempName(e.target.value)} placeholder="输入你的昵称" className="w-full bg-white/10 border border-pink-400 rounded-full px-4 py-2 text-white mb-4 text-center text-sm" />
-                                    <button onClick={saveNickname} className="bg-pink-500 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg">确定</button>
+                                    <input type="text" value={tempName} onChange={(e)=>setTempName(e.target.value)} placeholder="昵称" className="w-full bg-white/10 border border-pink-400 rounded-full px-4 py-2 text-white mb-4 text-center text-sm" />
+                                    <button onClick={saveNickname} className="bg-pink-500 text-white px-6 py-2 rounded-full font-bold text-sm">确定</button>
                                 </div>
                             ) : (
                                 <div className="bg-pink-900/30 px-3 py-1 text-[10px] text-pink-100 flex justify-between cursor-pointer" onClick={()=>setIsEditingName(true)}><span>{nickname}</span><span>(修改)</span></div>
@@ -217,49 +231,46 @@
                                 {messages.map((msg) => {
                                     const isMe = msg.senderId === user?.uid.slice(0, 5);
                                     if (msg.isSystem) return (<div key={msg.id} className="flex justify-center"><span className="bg-yellow-500/20 text-yellow-200 text-[10px] px-2 py-0.5 rounded-full border border-yellow-500/30">📣 {msg.text}</span></div>);
-                                    return (
-                                        <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                                            <div className="flex items-center gap-1 mb-0.5 px-1">
-                                                <span className="text-[10px] text-white/50">{msg.senderName}</span>
-                                            </div>
-                                            <div className={`max-w-[90%] px-3 py-1.5 rounded-2xl text-xs break-words ${isMe ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
-                                                {msg.text}
-                                                {msg.senderBalance !== undefined && <div className={`text-[8px] mt-1 text-right opacity-50`}>💰{msg.senderBalance.toLocaleString()}</div>}
-                                            </div>
-                                        </div>
-                                    );
+                                    return (<div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}><div className="flex items-center gap-1 mb-0.5 px-1"><span className="text-[10px] text-white/50">{msg.senderName}</span></div><div className={`max-w-[90%] px-3 py-1.5 rounded-2xl text-xs break-words ${isMe ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>{msg.text}</div></div>);
                                 })}
                                 <div ref={messagesEndRef} />
                             </div>
-                            {/* 快捷表情栏 */}
-                            <div className="px-2 py-1 flex gap-2 overflow-x-auto hide-scrollbar bg-white/5">
-                                {quickEmojis.map(e => <button key={e} onClick={()=>sendMessage(e)} className="flex-shrink-0 bg-white/10 hover:bg-white/20 px-2 py-1 rounded-full text-[10px] text-white transition-colors">{e}</button>)}
-                            </div>
-                            <form onSubmit={(e)=>{e.preventDefault(); sendMessage();}} className="p-2 bg-slate-800/50 border-t border-white/5 flex gap-2">
-                                <input type="text" value={inputText} onChange={(e)=>setInputText(e.target.value)} className="flex-1 bg-slate-900/50 border border-white/10 rounded-full px-3 py-1.5 text-xs text-white" placeholder="说点什么..." />
-                                <button type="submit" disabled={isEditingName} className="bg-pink-500 text-white p-1.5 rounded-full shadow-lg"><lucide-icon name="send" size="14"></lucide-icon></button>
-                            </form>
+                            <div className="px-2 py-1 flex gap-2 overflow-x-auto hide-scrollbar bg-white/5">{quickEmojis.map(e => <button key={e} onClick={()=>sendMessage(e)} className="flex-shrink-0 bg-white/10 hover:bg-white/20 px-2 py-1 rounded-full text-[10px] text-white">{e}</button>)}</div>
+                            <form onSubmit={(e)=>{e.preventDefault(); sendMessage();}} className="p-2 bg-slate-800/50 border-t border-white/5 flex gap-2"><input type="text" value={inputText} onChange={(e)=>setInputText(e.target.value)} className="flex-1 bg-slate-900/50 border border-white/10 rounded-full px-3 py-1.5 text-xs text-white" placeholder="..." /><button type="submit" disabled={isEditingName} className="bg-pink-500 text-white p-1.5 rounded-full"><lucide-icon name="send" size="14"></lucide-icon></button></form>
                         </div>
                     )}
-                    <button onClick={() => setIsOpen(!isOpen)} className="w-12 h-12 rounded-full bg-pink-500 text-white flex items-center justify-center hover:scale-110 transition-transform shadow-lg border-2 border-white/20 overflow-hidden relative animate-bounce">
+                    <button onClick={() => setIsOpen(!isOpen)} className="w-12 h-12 rounded-full bg-pink-500 text-white flex items-center justify-center shadow-lg border-2 border-white/20 overflow-hidden relative animate-bounce">
                         {isOpen ? <span className="text-xl font-bold">✕</span> : <img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />}
                     </button>
                 </div>
             );
         };
 
-        // --- 3D 骰子 ---
+        // --- 3D 骰子 (解决卡顿版) ---
         const Die3D = ({ value, rolling }) => {
-            const [transform, setTransform] = useState('');
+            const [style, setStyle] = useState({});
+            const rollingAnim = useRef(null);
+
             useEffect(() => {
                 if (rolling) {
-                    const x = Math.random()*1440-720; const y = Math.random()*1440-720; setTransform(`rotateX(${x}deg) rotateY(${y}deg)`);
+                    // 摇动时：应用无限旋转 CSS 动画
+                    setStyle({ animation: `tumble 0.6s linear infinite` });
                 } else {
+                    // 停止时：计算最终角度，并应用平滑过渡
                     let rX=0, rY=0;
                     switch(value) { case 1: rX=0; rY=0; break; case 2: rX=0; rY=180; break; case 3: rX=0; rY=-90; break; case 4: rX=0; rY=90; break; case 5: rX=-90; rY=0; break; case 6: rX=90; rY=0; break; }
-                    setTransform(`rotateX(${rX+1440+(Math.random()-0.5)*10}deg) rotateY(${rY+1440+(Math.random()-0.5)*10}deg)`); 
+                    
+                    // 为了视觉连贯，加上多圈旋转 (1080 = 3圈)
+                    const finalTransform = `rotateX(${rX + 1080}deg) rotateY(${rY + 1080}deg)`;
+                    
+                    setStyle({ 
+                        animation: 'none', // 停止动画
+                        transform: finalTransform,
+                        transition: 'transform 0.5s cubic-bezier(0.1, 0.9, 0.2, 1)' // 刹车曲线
+                    });
                 }
             }, [value, rolling]);
+
             const Face = ({ dots, className }) => (
                 <div className={`face ${className}`}>
                     <div className="relative w-full h-full grid grid-cols-3 grid-rows-3 p-1">
@@ -269,46 +280,30 @@
             );
             return (
                 <div className="scene mx-2">
-                    <div className="cube-wrapper" style={{ transform: transform }}>
-                        <div className="cube">
-                            <Face className="front" dots={[{col:2,row:2,val:'center'}]} /> <Face className="back" dots={[{col:1,row:1},{col:3,row:3}]} />
-                            <Face className="right" dots={[{col:1,row:1},{col:2,row:2},{col:3,row:3}]} /> <Face className="left" dots={[{col:1,row:1},{col:1,row:3},{col:3,row:1},{col:3,row:3}]} />
-                            <Face className="top" dots={[{col:1,row:1},{col:3,row:1},{col:2,row:2},{col:1,row:3},{col:3,row:3}]} /> <Face className="bottom" dots={[{col:1,row:1},{col:1,row:2},{col:1,row:3},{col:3,row:1},{col:3,row:2},{col:3,row:3}]} />
-                        </div>
+                    <div className="cube-wrapper" style={style}>
+                        <div className="cube"><Face className="front" dots={[{col:2,row:2,val:'center'}]} /><Face className="back" dots={[{col:1,row:1},{col:3,row:3}]} /><Face className="right" dots={[{col:1,row:1},{col:2,row:2},{col:3,row:3}]} /><Face className="left" dots={[{col:1,row:1},{col:1,row:3},{col:3,row:1},{col:3,row:3}]} /><Face className="top" dots={[{col:1,row:1},{col:3,row:1},{col:2,row:2},{col:1,row:3},{col:3,row:3}]} /><Face className="bottom" dots={[{col:1,row:1},{col:1,row:2},{col:1,row:3},{col:3,row:1},{col:3,row:2},{col:3,row:3}]} /></div>
                         <div className={`shadow-spot ${rolling ? 'scale-50' : 'scale-100'}`}></div>
                     </div>
                 </div>
             );
         };
 
-        const FloatingText = ({ text, x, y, color }) => <div className="floating-text" style={{ left: x, top: y, fontSize: '20px', color: color || '#ffd700' }}>{text}</div>;
+        const FloatingText = ({ text, x, y, color }) => <div className="floating-text" style={{ left: x, top: y, fontSize: '24px', color: color || '#ffd700' }}>{text}</div>;
 
-        // --- 猫猫荷官 ---
         const MascotDealer = ({ gameState }) => {
             const [msg, setMsg] = useState("");
             const [anim, setAnim] = useState("mascot-idle");
-            
             useEffect(() => {
-                if(gameState === 'rolling') { setAnim("mascot-rolling"); setMsg("摇呀摇~"); }
-                else if(gameState === 'revealed') { setAnim("mascot-win"); setMsg("开啦!"); setTimeout(()=>setMsg(""), 2000); }
+                if(gameState === 'rolling') { setAnim("mascot-rolling"); setMsg("摇摇摇!"); }
+                else if(gameState === 'revealed') { setAnim("mascot-win"); setMsg("开!"); setTimeout(()=>setMsg(""), 2000); }
                 else { setAnim("mascot-idle"); }
             }, [gameState]);
-
-            const poke = () => {
-                AudioSynth.playMeow();
-                setAnim("mascot-win");
-                const phrases = ["别戳我啦!", "要来一局吗?", "祝你发财!", "喵呜~", "小鱼干呢?"];
-                setMsg(phrases[Math.floor(Math.random()*phrases.length)]);
-                setTimeout(() => { setMsg(""); if(gameState==='idle') setAnim("mascot-idle"); }, 2000);
-            };
-
+            const poke = () => { AudioSynth.playMeow(); setAnim("mascot-win"); setMsg("喵呜~"); setTimeout(() => { setMsg(""); if(gameState==='idle') setAnim("mascot-idle"); }, 1500); };
             return (
                 <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center cursor-pointer" onClick={poke}>
                     <div className={`relative w-20 h-20 sm:w-24 sm:h-24 ${anim}`}>
                         <img src="1.jpg" className="w-full h-full rounded-full border-4 border-white/50 shadow-lg object-cover bg-white" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
-                        {/* 猫耳朵装饰 (CSS画的) */}
-                        <div className="absolute -top-2 left-0 w-6 h-6 bg-white/90 rounded-tl-xl rotate-[-10deg] -z-10"></div>
-                        <div className="absolute -top-2 right-0 w-6 h-6 bg-white/90 rounded-tr-xl rotate-[10deg] -z-10"></div>
+                        <div className="absolute -top-2 left-0 w-6 h-6 bg-white/90 rounded-tl-xl rotate-[-10deg] -z-10"></div><div className="absolute -top-2 right-0 w-6 h-6 bg-white/90 rounded-tr-xl rotate-[10deg] -z-10"></div>
                     </div>
                     <div className={`speech-bubble ${msg ? 'show-bubble' : ''}`}>{msg}</div>
                 </div>
@@ -320,18 +315,19 @@
             const [balance, setBalance] = useState(10000);
             const [bets, setBets] = useState({ small: 0, big: 0, triple: 0 });
             const [pointBets, setPointBets] = useState({});
+            const [specialBets, setSpecialBets] = useState({}); // s123, s456, t1, t2... t6
             const [gameState, setGameState] = useState('idle');
             const [dice, setDice] = useState([1, 1, 1]);
             const [history, setHistory] = useState([]);
             const [selectedChip, setSelectedChip] = useState(100);
             const [nickname, setNickname] = useState('');
             const [winningZones, setWinningZones] = useState([]);
-            const [winningPoints, setWinningPoints] = useState([]);
             const [floatingTexts, setFloatingTexts] = useState([]);
+            const [betHistory, setBetHistory] = useState([]); 
             const [user, setUser] = useState(null);
             const [firebaseReady, setFirebaseReady] = useState(false);
-            const [showParticles, setShowParticles] = useState(false);
             const [showRelief, setShowRelief] = useState(false);
+            const [showFireworks, setShowFireworks] = useState(false);
 
             const dbRef = useRef(null);
             const authRef = useRef(null);
@@ -360,15 +356,13 @@
                 const docRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'users', user.uid, 'data', 'account');
                 const unsubscribe = window.FB.onSnapshot(docRef, (doc) => {
                     if (doc.exists()) {
-                        const data = doc.data(); 
-                        if (data.balance !== undefined) setBalance(data.balance);
-                        const totalPointBet = Object.values(pointBets).reduce((a,b)=>a+b, 0);
-                        const totalMainBet = bets.small + bets.big + bets.triple;
-                        if (data.balance < 100 && gameState === 'idle' && totalMainBet === 0 && totalPointBet === 0) { setTimeout(() => setShowRelief(true), 1000); }
+                        const data = doc.data(); if (data.balance !== undefined) setBalance(data.balance);
+                        const totalBets = Object.values(pointBets).reduce((a,b)=>a+b,0) + bets.small + bets.big + bets.triple + Object.values(specialBets).reduce((a,b)=>a+b,0);
+                        if (data.balance < 100 && gameState === 'idle' && totalBets === 0) { setTimeout(() => setShowRelief(true), 1000); }
                     } else { window.FB.setDoc(docRef, { balance: 10000, createdAt: window.FB.serverTimestamp() }, { merge: true }); setBalance(10000); }
                 });
                 return () => unsubscribe();
-            }, [user, gameState, pointBets, bets]);
+            }, [user, gameState, pointBets, bets, specialBets]);
 
             const updateCloudBalance = async (newBalance) => {
                 if (!user || !dbRef.current) return;
@@ -377,174 +371,180 @@
 
             const handleRelief = () => { AudioSynth.playWin(); const newBalance = balance + 2000; setBalance(newBalance); updateCloudBalance(newBalance); setShowRelief(false); };
 
-            const placeBet = (type) => {
+            const addToBet = (category, key) => {
                 if (gameState !== 'idle') return;
                 if (balance < selectedChip) { AudioSynth.playLose(); return; }
                 AudioSynth.playChip(); AudioSynth.vibrate(10);
                 const newBalance = balance - selectedChip; setBalance(newBalance); updateCloudBalance(newBalance);
-                setBets(prev => ({ ...prev, [type]: prev[type] + selectedChip }));
+                setBetHistory(prev => [...prev, { category, key, amount: selectedChip }]);
+                if (category === 'main') setBets(prev => ({ ...prev, [key]: prev[key] + selectedChip }));
+                else if (category === 'point') setPointBets(prev => ({ ...prev, [key]: (prev[key] || 0) + selectedChip }));
+                else if (category === 'special') setSpecialBets(prev => ({ ...prev, [key]: (prev[key] || 0) + selectedChip }));
             };
 
-            const placePointBet = (num) => {
-                if (gameState !== 'idle') return;
-                if (balance < selectedChip) { AudioSynth.playLose(); return; }
-                AudioSynth.playChip(); AudioSynth.vibrate(10);
-                const newBalance = balance - selectedChip; setBalance(newBalance); updateCloudBalance(newBalance);
-                setPointBets(prev => ({ ...prev, [num]: (prev[num] || 0) + selectedChip }));
+            const undoBet = () => {
+                if (gameState !== 'idle' || betHistory.length === 0) return;
+                const lastBet = betHistory[betHistory.length - 1];
+                const newBalance = balance + lastBet.amount; setBalance(newBalance); updateCloudBalance(newBalance);
+                if (lastBet.category === 'main') setBets(prev => ({ ...prev, [lastBet.key]: Math.max(0, prev[lastBet.key] - lastBet.amount) }));
+                else if (lastBet.category === 'point') setPointBets(prev => ({ ...prev, [lastBet.key]: Math.max(0, prev[lastBet.key] - lastBet.amount) }));
+                else if (lastBet.category === 'special') setSpecialBets(prev => ({ ...prev, [lastBet.key]: Math.max(0, prev[lastBet.key] - lastBet.amount) }));
+                setBetHistory(prev => prev.slice(0, -1)); AudioSynth.playChip();
             };
 
             const rollDice = () => {
-                const totalPointBet = Object.values(pointBets).reduce((a,b)=>a+b, 0);
-                if (bets.small === 0 && bets.big === 0 && bets.triple === 0 && totalPointBet === 0) { alert("请先下注喵！"); return; }
-                
-                setGameState('rolling'); setWinningZones([]); setWinningPoints([]); setFloatingTexts([]);
+                if (betHistory.length === 0) { alert("请先下注喵！"); return; }
+                setGameState('rolling'); setWinningZones([]); setFloatingTexts([]); setShowFireworks(false);
                 AudioSynth.playRoll(); AudioSynth.vibrate([50, 50, 50]);
-                
                 setTimeout(() => {
                     const d1 = Math.floor(Math.random() * 6) + 1; const d2 = Math.floor(Math.random() * 6) + 1; const d3 = Math.floor(Math.random() * 6) + 1;
                     const total = d1 + d2 + d3; const isTriple = (d1 === d2 && d2 === d3);
                     let mainResult = !isTriple ? (total >= 11 ? 'big' : 'small') : 'triple';
                     setDice([d1, d2, d3]);
-                    setTimeout(() => handleResult(d1, d2, d3, total, mainResult, isTriple), 1200); 
-                }, 1500); 
+                    setTimeout(() => handleResult(d1, d2, d3, total, mainResult, isTriple), 600); // 这里时间缩短，因为CSS动画会自动停
+                }, 1000); 
             };
 
             const handleResult = (d1, d2, d3, total, mainResult, isTriple) => {
                 setGameState('revealed');
-                let totalWin = 0; const winners = []; const winPoints = []; const newFloatingTexts = [];
+                let totalWin = 0; const winners = []; const newFloatingTexts = [];
+                const diceStr = [d1, d2, d3].sort().join(''); 
 
+                // 1. 主玩法
                 if (!isTriple && total >= 4 && total <= 10) { if (bets.small > 0) { const win = bets.small * 2; totalWin += win; newFloatingTexts.push({ id: 's', text: `+${win}`, x: '20%', y: '50%' }); } winners.push('small'); }
                 if (!isTriple && total >= 11 && total <= 17) { if (bets.big > 0) { const win = bets.big * 2; totalWin += win; newFloatingTexts.push({ id: 'b', text: `+${win}`, x: '80%', y: '50%' }); } winners.push('big'); }
                 if (isTriple) { if (bets.triple > 0) { const win = bets.triple * 25; totalWin += win; newFloatingTexts.push({ id: 't', text: `+${win}`, x: '50%', y: '40%' }); } winners.push('triple'); }
 
-                if (pointBets[total] > 0) {
-                    const win = pointBets[total] * 51; totalWin += win; winPoints.push(total);
-                    newFloatingTexts.push({ id: 'p', text: `大奖 +${win}`, x: '50%', y: '25%', color: '#ff69b4' });
-                    if (firebaseReady && user) { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `🎉 哇！${nickname || '有人'} 押中了 ${total} 点！狂赚 ${win}！`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); }
+                // 2. 点数玩法
+                if (pointBets[total] > 0) { const win = pointBets[total] * 51; totalWin += win; winners.push(`p${total}`); newFloatingTexts.push({ id: 'p', text: `🎯 +${win}`, x: '50%', y: '30%', color: '#FF00FF' }); }
+
+                // 3. 特殊玩法 (500倍)
+                if (diceStr === '123' && specialBets.s123 > 0) { const win = specialBets.s123 * 501; totalWin += win; winners.push('s123'); newFloatingTexts.push({ id: 'sp1', text: `🚀暴富 +${win}`, x: '50%', y: '50%', color: 'red' }); setShowFireworks(true); AudioSynth.playJackpot(); }
+                if (diceStr === '456' && specialBets.s456 > 0) { const win = specialBets.s456 * 501; totalWin += win; winners.push('s456'); newFloatingTexts.push({ id: 'sp2', text: `🚀暴富 +${win}`, x: '50%', y: '50%', color: 'red' }); setShowFireworks(true); AudioSynth.playJackpot(); }
+                
+                // 4. 特定豹子 (500倍) - 111, 222...
+                if (isTriple) {
+                    const key = `t${d1}`;
+                    if (specialBets[key] > 0) {
+                        const win = specialBets[key] * 501; totalWin += win; winners.push(key);
+                        newFloatingTexts.push({ id: 'sp3', text: `🔥豹子王 +${win}`, x: '50%', y: '60%', color: 'red' });
+                        setShowFireworks(true); AudioSynth.playJackpot();
+                    }
                 }
 
-                setWinningZones(winners); setWinningPoints(winPoints);
+                if (totalWin > 10000 && firebaseReady && user) { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `🎉 ${nickname || '有人'} 狂赚 ${totalWin}！太强了！`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); }
+
+                setWinningZones(winners);
 
                 if (totalWin > 0) {
                     const newBalance = balance + totalWin; setBalance(newBalance); updateCloudBalance(newBalance);
-                    AudioSynth.playWin(); AudioSynth.vibrate([100, 50, 100]); 
-                    setShowParticles(true); setTimeout(()=>setShowParticles(false), 2000);
-                    setFloatingTexts(newFloatingTexts);
+                    if(!showFireworks) AudioSynth.playWin(); 
+                    AudioSynth.vibrate([100, 50, 100]); setFloatingTexts(newFloatingTexts);
                 } else { AudioSynth.playLose(); AudioSynth.vibrate(300); }
 
                 setHistory(prev => [...prev, { result: mainResult, total, dice: [d1, d2, d3] }].slice(-10)); 
-                setTimeout(() => { setGameState('idle'); setBets({ small: 0, big: 0, triple: 0 }); setPointBets({}); setWinningZones([]); setWinningPoints([]); setFloatingTexts([]); }, 3000);
+                setTimeout(() => { setGameState('idle'); setBets({ small: 0, big: 0, triple: 0 }); setPointBets({}); setSpecialBets({}); setBetHistory([]); setWinningZones([]); setFloatingTexts([]); setShowFireworks(false); }, 3500);
             };
 
             const chips = [100, 500, 1000, 5000];
-            const totalMainBet = bets.small + bets.big + bets.triple;
-            const totalPointBet = Object.values(pointBets).reduce((a,b)=>a+b, 0);
 
             return (
-                <div className="relative w-full h-full flex flex-col items-center justify-between pb-4 cute-bg overflow-hidden text-white">
+                <div className="cute-bg text-white flex flex-col h-full w-full relative">
                     <div className="absolute inset-0 cute-overlay pointer-events-none"></div>
-                    <ParticleSystem active={showParticles} />
+                    <FireworkSystem active={showFireworks} />
                     <div className="absolute inset-0 pointer-events-none z-40">{floatingTexts.map(ft => <FloatingText key={ft.id} text={ft.text} x={ft.x} y={ft.y} color={ft.color} />)}</div>
                     {firebaseReady && <ChatRoom user={user} db={dbRef.current} appId={appIdRef.current} nickname={nickname} setNickname={setNickname} balance={balance} />}
-                    
-                    {/* 救济金弹窗 */}
-                    {showRelief && (
-                        <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur flex items-center justify-center p-6 animate-fade-in-up">
-                            <div className="bg-white/10 border-2 border-pink-300 p-6 rounded-3xl text-center shadow-2xl w-full max-w-xs relative overflow-hidden">
-                                <div className="absolute inset-0 bg-pink-500/10"></div>
-                                <div className="relative z-10">
-                                    <div className="text-5xl mb-2">😿</div>
-                                    <h3 className="text-2xl font-cute text-pink-200 mb-2">空空如也...</h3>
-                                    <button onClick={handleRelief} className="bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold px-8 py-3 rounded-full shadow-lg animate-pulse-gold">领取 $2,000 救助</button>
-                                    <button onClick={()=>setShowRelief(false)} className="block mt-4 text-xs text-white/40 underline w-full">倔强离开</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    {showRelief && <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur flex items-center justify-center p-6 animate-fade-in-up"><div className="bg-white/10 border-2 border-pink-300 p-6 rounded-3xl text-center shadow-2xl w-full max-w-xs relative overflow-hidden"><div className="absolute inset-0 bg-pink-500/10"></div><div className="relative z-10"><div className="text-5xl mb-2">😿</div><h3 className="text-2xl font-cute text-pink-200 mb-2">没钱了...</h3><button onClick={handleRelief} className="bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold px-8 py-3 rounded-full shadow-lg animate-pulse-gold">领取 $2,000 翻本</button><button onClick={()=>setShowRelief(false)} className="block mt-4 text-xs text-white/40 underline w-full">倔强离开</button></div></div></div>}
 
                     {/* Header */}
-                    <div className="z-50 w-full max-w-4xl p-3 flex justify-between items-center relative">
+                    <div className="z-50 w-full max-w-4xl p-3 flex justify-between items-center relative flex-shrink-0">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-pink-300 shadow-lg bg-white flex-shrink-0">
-                                <img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
-                            </div>
-                            <div className="min-w-0">
-                                <h1 className="font-cute text-2xl text-pink-200 drop-shadow-sm">多宝骰子</h1>
-                                <p className="text-pink-100/60 text-xs">ID: {user ? user.uid.slice(0,5) : '...'}</p>
-                            </div>
+                            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-pink-300 shadow-lg bg-white flex-shrink-0"><img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} /></div>
+                            <div className="min-w-0"><h1 className="font-cute text-xl text-pink-200 drop-shadow-sm">多宝骰子</h1></div>
                         </div>
-                        <div className="glass-panel px-3 py-1.5 flex items-center gap-2 flex-shrink-0 ml-2 border-pink-300/30">
-                            <span className="text-yellow-300 text-lg">💰</span>
-                            <span className="text-xl font-mono font-bold text-white">{balance.toLocaleString()}</span>
-                        </div>
+                        <div className="glass-panel px-3 py-1 flex items-center gap-2 flex-shrink-0 ml-2 border-pink-300/30"><span className="text-yellow-300 text-base">💰</span><span className="text-lg font-mono font-bold text-white">{balance.toLocaleString()}</span></div>
                     </div>
 
-                    {/* Game Area (Mascot & Dice) */}
-                    <div className="z-10 flex-1 flex flex-col justify-center items-center w-full -mt-6 relative">
-                        
-                        {/* 骰盅区域 */}
-                        <div className="relative w-[85%] max-w-md h-40 flex justify-center items-center bg-white/5 rounded-[3rem] border border-pink-200/20 shadow-xl backdrop-blur-sm mt-12">
-                            {/* 荷官 (趴在骰盅上) */}
-                            <MascotDealer gameState={gameState} />
-
-                            {gameState === 'revealed' && (
-                                <div className="absolute -top-12 animate-bounce z-30 w-full text-center pointer-events-none">
-                                    <span className="font-cute text-5xl text-yellow-300 drop-shadow-lg stroke-2">{dice.reduce((a,b)=>a+b,0)}</span>
-                                    <span className="text-lg font-bold text-white ml-2">点!</span>
-                                </div>
-                            )}
-                            <Die3D value={dice[0]} rolling={gameState === 'rolling'} />
-                            <Die3D value={dice[1]} rolling={gameState === 'rolling'} />
-                            <Die3D value={dice[2]} rolling={gameState === 'rolling'} />
-                        </div>
-                        
-                        {/* 珠盘路 */}
-                        <div className="mt-4 flex gap-1 h-5 opacity-70 px-4 w-full justify-center">
-                            {history.map((h, i) => <div key={i} className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-bold shadow-sm ${h.result==='big'?'bg-red-400':h.result==='small'?'bg-blue-400':'bg-green-400'}`}>{h.result==='big'?'大':h.result==='small'?'小':'豹'}</div>)}
-                        </div>
-                    </div>
-
-                    {/* Betting Area */}
-                    <div className="z-20 w-full max-w-4xl px-3 mb-2">
-                        {/* Point Bets */}
-                        <div className="mb-2">
-                            <div className="flex justify-between items-center px-1 mb-1">
-                                <span className="text-xs text-pink-200 font-bold">🎯 猜点数 (1赔50)</span>
-                                <span className="text-[10px] text-white/30">滑动下注</span>
+                    {/* Scrollable Content */}
+                    <div className="flex-1 overflow-y-auto w-full flex flex-col items-center pb-24 hide-scrollbar">
+                        {/* Game Area */}
+                        <div className="relative w-full flex justify-center items-center mt-8 mb-4 flex-shrink-0">
+                            <div className="relative w-[85%] max-w-md h-36 flex justify-center items-center bg-white/5 rounded-[3rem] border border-pink-200/20 shadow-xl backdrop-blur-sm">
+                                <MascotDealer gameState={gameState} />
+                                {gameState === 'revealed' && <div className="absolute -top-12 animate-bounce z-30 w-full text-center pointer-events-none"><span className="font-cute text-5xl text-yellow-300 drop-shadow-lg stroke-2">{dice.reduce((a,b)=>a+b,0)}</span><span className="text-lg font-bold text-white ml-2">点!</span></div>}
+                                <Die3D value={dice[0]} rolling={gameState === 'rolling'} />
+                                <Die3D value={dice[1]} rolling={gameState === 'rolling'} />
+                                <Die3D value={dice[2]} rolling={gameState === 'rolling'} />
                             </div>
-                            <div className="flex overflow-x-auto space-x-2 pb-2 hide-scrollbar px-1">
-                                {Array.from({length: 14}, (_, i) => i + 4).map(num => (
-                                    <button key={num} disabled={gameState !== 'idle'} onClick={() => placePointBet(num)} className={`flex-shrink-0 w-12 h-14 rounded-2xl border-b-4 transition-all active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center relative ${pointBets[num] > 0 ? 'bg-pink-500 border-pink-700 text-white' : 'bg-white/10 border-white/10 text-pink-100/70 hover:bg-white/20'} ${winningPoints.includes(num) ? 'animate-win' : ''}`}>
-                                        <span className="font-cute text-xl">{num}</span>
-                                        {pointBets[num] > 0 && <span className="text-[8px] bg-black/20 px-1 rounded-full absolute bottom-1">${pointBets[num]}</span>}
+                        </div>
+                        <div className="flex gap-1 h-5 opacity-70 mb-4">{history.map((h, i) => <div key={i} className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-bold shadow-sm ${h.result==='big'?'bg-red-400':h.result==='small'?'bg-blue-400':'bg-green-400'}`}>{h.result==='big'?'大':h.result==='small'?'小':'豹'}</div>)}</div>
+
+                        {/* Betting Area */}
+                        <div className="w-full max-w-4xl px-3 flex flex-col gap-4">
+                            
+                            {/* Specific Triples (500x) */}
+                            <div>
+                                <div className="flex justify-between px-1 mb-1 text-[10px] text-pink-200/70"><span>🔥 暴富区 (1赔500)</span><span>滑动下注</span></div>
+                                <div className="flex overflow-x-auto space-x-2 pb-2 hide-scrollbar px-1">
+                                    <button disabled={gameState !== 'idle'} onClick={() => addToBet('special', 's123')} className={`flex-shrink-0 w-16 h-10 rounded-lg border bg-purple-900/50 border-purple-500/30 flex items-center justify-center relative ${winningZones.includes('s123')?'animate-win':''}`}>
+                                        <span className="font-bold text-xs">123</span>
+                                        {specialBets.s123>0 && <div className="absolute -top-2 right-0 bg-yellow-400 text-black text-[8px] px-1 rounded-full">${specialBets.s123}</div>}
                                     </button>
-                                ))}
+                                    <button disabled={gameState !== 'idle'} onClick={() => addToBet('special', 's456')} className={`flex-shrink-0 w-16 h-10 rounded-lg border bg-purple-900/50 border-purple-500/30 flex items-center justify-center relative ${winningZones.includes('s456')?'animate-win':''}`}>
+                                        <span className="font-bold text-xs">456</span>
+                                        {specialBets.s456>0 && <div className="absolute -top-2 right-0 bg-yellow-400 text-black text-[8px] px-1 rounded-full">${specialBets.s456}</div>}
+                                    </button>
+                                    {/* 111 to 666 */}
+                                    {[1,2,3,4,5,6].map(n => (
+                                        <button key={n} disabled={gameState !== 'idle'} onClick={() => addToBet('special', `t${n}`)} className={`flex-shrink-0 w-12 h-10 rounded-lg border bg-purple-900/50 border-purple-500/30 flex items-center justify-center relative ${winningZones.includes(`t${n}`)?'animate-win':''}`}>
+                                            <div className="flex flex-col leading-none items-center">
+                                                <span className="font-bold text-xs">{n}{n}{n}</span>
+                                            </div>
+                                            {specialBets[`t${n}`]>0 && <div className="absolute -top-2 right-0 bg-yellow-400 text-black text-[8px] px-1 rounded-full">${specialBets[`t${n}`]}</div>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Point Bets (50x) */}
+                            <div>
+                                <div className="flex justify-between px-1 mb-1 text-[10px] text-pink-200/70"><span>🎯 猜点数 (1赔50)</span><span>滑动下注</span></div>
+                                <div className="flex overflow-x-auto space-x-2 pb-2 hide-scrollbar px-1">
+                                    {Array.from({length: 14}, (_, i) => i + 4).map(num => (
+                                        <button key={num} disabled={gameState !== 'idle'} onClick={() => addToBet('point', num)} className={`flex-shrink-0 w-12 h-14 rounded-2xl border-b-4 transition-all active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center relative ${pointBets[num] > 0 ? 'bg-pink-500 border-pink-700 text-white' : 'bg-white/10 border-white/10 text-pink-100/70 hover:bg-white/20'} ${winningZones.includes(`p${num}`) ? 'animate-win' : ''}`}>
+                                            <span className="font-cute text-xl">{num}</span>
+                                            {pointBets[num] > 0 && <span className="text-[8px] bg-black/20 px-1 rounded-full absolute bottom-1">${pointBets[num]}</span>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Main Bets */}
+                            <div className="flex gap-3 h-24 mb-2">
+                                <button disabled={gameState !== 'idle'} onClick={() => addToBet('main', 'small')} className={`flex-1 rounded-3xl border-b-4 active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center relative shadow-lg transition-colors ${bets.small>0?'bg-blue-400 border-blue-600':'bg-indigo-900/40 border-indigo-900/60'} ${winningZones.includes('small')?'animate-win':''}`}>
+                                    <span className="font-cute text-4xl text-white drop-shadow-md">小</span><span className="text-[10px] text-white/50">4-10</span>{bets.small>0 && <div className="absolute -top-2 bg-yellow-400 text-black text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">${bets.small}</div>}
+                                </button>
+                                <button disabled={gameState !== 'idle'} onClick={() => addToBet('main', 'triple')} className={`w-20 rounded-3xl border-b-4 active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center relative shadow-lg transition-colors ${bets.triple>0?'bg-green-400 border-green-600':'bg-indigo-900/40 border-indigo-900/60'} ${winningZones.includes('triple')?'animate-win':''}`}>
+                                    <span className="font-cute text-xl text-white drop-shadow-md">豹子</span><span className="text-[10px] text-white/50">1:24</span>{bets.triple>0 && <div className="absolute -top-2 bg-yellow-400 text-black text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">${bets.triple}</div>}
+                                </button>
+                                <button disabled={gameState !== 'idle'} onClick={() => addToBet('main', 'big')} className={`flex-1 rounded-3xl border-b-4 active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center relative shadow-lg transition-colors ${bets.big>0?'bg-red-400 border-red-600':'bg-indigo-900/40 border-indigo-900/60'} ${winningZones.includes('big')?'animate-win':''}`}>
+                                    <span className="font-cute text-4xl text-white drop-shadow-md">大</span><span className="text-[10px] text-white/50">11-17</span>{bets.big>0 && <div className="absolute -top-2 bg-yellow-400 text-black text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">${bets.big}</div>}
+                                </button>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Main Bets */}
-                        <div className="flex gap-3 mb-4 h-24">
-                            <button disabled={gameState !== 'idle'} onClick={() => placeBet('small')} className={`flex-1 rounded-3xl border-b-4 active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center relative shadow-lg transition-colors ${bets.small>0?'bg-blue-400 border-blue-600':'bg-indigo-900/40 border-indigo-900/60'} ${winningZones.includes('small')?'animate-win':''}`}>
-                                <span className="font-cute text-4xl text-white drop-shadow-md">小</span><span className="text-[10px] text-white/50">4-10</span>
-                                {bets.small>0 && <div className="absolute -top-2 bg-yellow-400 text-black text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">${bets.small}</div>}
+                    {/* Fixed Footer Controls */}
+                    <div className="absolute bottom-0 left-0 w-full p-3 bg-slate-900/90 border-t border-white/10 backdrop-blur-md z-30">
+                        <div className="w-full max-w-4xl mx-auto flex justify-between items-center gap-3">
+                            <button onClick={undoBet} disabled={gameState !== 'idle' || betHistory.length === 0} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white/70 disabled:opacity-30 active:bg-white/20">
+                                <lucide-icon name="rotate-ccw" size="18"></lucide-icon>
                             </button>
-                            <button disabled={gameState !== 'idle'} onClick={() => placeBet('triple')} className={`w-20 rounded-3xl border-b-4 active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center relative shadow-lg transition-colors ${bets.triple>0?'bg-green-400 border-green-600':'bg-indigo-900/40 border-indigo-900/60'} ${winningZones.includes('triple')?'animate-win':''}`}>
-                                <span className="font-cute text-xl text-white drop-shadow-md">豹子</span><span className="text-[10px] text-white/50">1:24</span>
-                                {bets.triple>0 && <div className="absolute -top-2 bg-yellow-400 text-black text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">${bets.triple}</div>}
-                            </button>
-                            <button disabled={gameState !== 'idle'} onClick={() => placeBet('big')} className={`flex-1 rounded-3xl border-b-4 active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center relative shadow-lg transition-colors ${bets.big>0?'bg-red-400 border-red-600':'bg-indigo-900/40 border-indigo-900/60'} ${winningZones.includes('big')?'animate-win':''}`}>
-                                <span className="font-cute text-4xl text-white drop-shadow-md">大</span><span className="text-[10px] text-white/50">11-17</span>
-                                {bets.big>0 && <div className="absolute -top-2 bg-yellow-400 text-black text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">${bets.big}</div>}
-                            </button>
-                        </div>
-
-                        {/* Controls */}
-                        <div className="glass-panel p-2 flex justify-between items-center gap-3">
-                            <div className="flex gap-2 pl-1 overflow-x-auto hide-scrollbar">
-                                {chips.map(val => <button key={val} onClick={() => setSelectedChip(val)} className={`flex-shrink-0 w-10 h-10 rounded-full border-2 border-dashed flex items-center justify-center font-bold text-[10px] transition-transform active:scale-90 ${selectedChip===val?'border-yellow-400 bg-yellow-400 text-black -translate-y-1 shadow-lg':'border-white/20 text-white/50 hover:border-white/40'}`}>{val}</button>)}
+                            <div className="flex gap-2 flex-1 overflow-x-auto hide-scrollbar px-1">
+                                {chips.map(val => <button key={val} onClick={() => setSelectedChip(val)} className={`flex-shrink-0 w-10 h-10 rounded-full border-2 border-dashed flex items-center justify-center font-bold text-[10px] transition-transform active:scale-90 ${selectedChip===val?'border-yellow-400 bg-yellow-500 text-black shadow-lg':'border-white/20 text-white/50'}`}>{val}</button>)}
                             </div>
-                            <button onClick={rollDice} disabled={gameState === 'rolling' || (totalMainBet===0 && totalPointBet===0)} className={`flex-1 py-3 rounded-2xl font-cute text-xl tracking-widest shadow-lg active:scale-95 transition-all ${gameState==='rolling'?'bg-slate-600 text-white/50 cursor-not-allowed':'bg-gradient-to-r from-pink-500 to-purple-500 text-white animate-pulse-gold'}`}>
-                                {gameState === 'rolling' ? '摇鸭摇...' : '开 摇 !'}
+                            <button onClick={rollDice} disabled={gameState === 'rolling' || betHistory.length === 0} className={`flex-1 py-2.5 rounded-xl font-cute text-xl tracking-widest shadow-lg active:scale-95 transition-all ${gameState==='rolling'?'bg-slate-600 text-white/50 cursor-not-allowed':'bg-gradient-to-r from-pink-500 to-purple-500 text-white animate-pulse-gold'}`}>
+                                {gameState === 'rolling' ? '...' : '开 摇'}
                             </button>
                         </div>
                     </div>
