@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>多宝骰子 (Duo Bao Dice) - 丝滑暴富版</title>
+    <title>多宝骰子 (Duo Bao Dice) - 最终优化版</title>
     
     <!-- 引入 React 和 Tailwind -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -14,27 +14,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Zcool+KuaiLe&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
     <style>
+        /* 修复滑动问题：允许Y轴滑动 (pan-y)，但禁止iOS的回弹效果 (overscroll-behavior) */
         body, html {
             height: 100%; margin: 0; padding: 0; font-family: 'Roboto', sans-serif;
-            background-color: #2a1b3d; overflow: hidden; touch-action: none; user-select: none; -webkit-tap-highlight-color: transparent;
+            background-color: #2a1b3d; 
+            overflow-x: hidden; /* 禁止横向滚动 */
+            touch-action: pan-y; /* 关键修复：允许上下滑动 */
+            overscroll-behavior: none; /* 禁止下拉刷新效果 */
+            user-select: none; -webkit-tap-highlight-color: transparent;
         }
-        #root { height: 100%; }
+        #root { height: 100%; display: flex; flex-direction: column; }
         .font-cute { font-family: 'Zcool KuaiLe', sans-serif; }
 
-        /* --- 3D 骰子引擎 (重构版) --- */
+        /* 3D 骰子相关 */
         .scene { perspective: 1200px; display: flex; justify-content: center; align-items: center; }
-        
-        .cube-wrapper { 
-            position: relative; 
-            transform-style: preserve-3d; 
-            width: 60px; height: 60px; 
-            /* 默认无过渡，由动画控制 */
-        }
+        .cube-wrapper { position: relative; transform-style: preserve-3d; width: 60px; height: 60px; }
         @media (min-width: 640px) { .cube-wrapper { width: 80px; height: 80px; } }
-
         .cube { width: 100%; height: 100%; position: absolute; transform-style: preserve-3d; }
         
-        /* 骰子材质优化 - 减少阴影模糊半径以提升手机性能 */
+        /* 骰子材质 */
         .face { position: absolute; width: 60px; height: 60px; background: linear-gradient(145deg, #fff5f7, #ffeef0); border-radius: 14px; box-shadow: inset 0 0 5px rgba(255,182,193,0.5); display: flex; justify-content: center; align-items: center; backface-visibility: hidden; }
         @media (min-width: 640px) { .face { width: 80px; height: 80px; border-radius: 18px; } }
         
@@ -42,7 +40,10 @@
         .dot.red { background: #ff5e78; }
         @media (min-width: 640px) { .dot { width: 16px; height: 16px; } }
         
-        /* 3D构建 */
+        .cube.golden .face { background: linear-gradient(135deg, #ffd700, #fdb931); border: 2px solid #fff; box-shadow: 0 0 15px #ffd700; }
+        .cube.golden .dot { background: #fff; }
+
+        /* 3D Faces */
         .cube-wrapper .face.front { transform: rotateY(0deg) translateZ(30px); }
         .cube-wrapper .face.back { transform: rotateY(180deg) translateZ(30px); }
         .cube-wrapper .face.right { transform: rotateY(90deg) translateZ(30px); }
@@ -58,30 +59,22 @@
             .cube-wrapper .face.bottom { transform: rotateX(-90deg) translateZ(40px); }
         }
 
-        /* 阴影 */
         .shadow-spot { position: absolute; width: 60px; height: 60px; background: radial-gradient(rgba(100,0,50,0.2), transparent 60%); transform: rotateX(90deg) translateZ(-50px); filter: blur(4px); opacity: 0.6; transition: all 0.3s; }
         @media (min-width: 640px) { .shadow-spot { width: 80px; height: 80px; transform: translateZ(-65px); } }
 
-        /* --- 关键动画优化 --- */
-        /* 无限翻滚动画 - 解决卡顿的核心 */
-        @keyframes tumble {
-            0% { transform: rotateX(0) rotateY(0) rotateZ(0); }
-            100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(360deg); }
-        }
-        /* 刹车动画 - 出结果时的缓冲 */
-        .settling { transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
-        
-        /* 赢钱飘字 */
+        /* 动画 */
+        @keyframes tumble { 0% { transform: rotateX(0) rotateY(0) rotateZ(0); } 100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(360deg); } }
         @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-100px) scale(1.2); } }
         .floating-text { position: absolute; font-weight: 900; font-family: 'Zcool KuaiLe', sans-serif; text-shadow: 0 2px 0px #fff, 0 4px 4px rgba(0,0,0,0.2); pointer-events: none; animation: floatUp 2s ease-out forwards; z-index: 100; white-space: nowrap; }
         
-        /* 荷官动画 */
         @keyframes bounce-mascot { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
         @keyframes crazy-shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 50% { transform: translate(-1px, -2px) rotate(-2deg); } 100% { transform: translate(-1px, -1px) rotate(2deg); } }
         .mascot-idle { animation: bounce-mascot 3s infinite ease-in-out; }
         .mascot-rolling { animation: crazy-shake 0.1s infinite; }
         .mascot-win { animation: bounce-mascot 0.4s infinite ease-in-out; }
 
+        @keyframes pulse-glow { 0% { box-shadow: 0 0 0 0 rgba(255, 192, 203, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 192, 203, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 192, 203, 0); } }
+        .animate-pulse-gold { animation: pulse-glow 1.5s infinite; }
         .animate-win { animation: bounce-mascot 0.5s infinite; border-color: #fff !important; background-color: #ffbad2 !important; color: #881234 !important; transform: scale(1.05); z-index: 10; }
 
         /* 样式 */
@@ -92,8 +85,32 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        .speech-bubble { position: absolute; background: #fff; border-radius: 20px; padding: 4px 8px; font-size: 12px; color: #333; top: -30px; left: 50%; transform: translateX(-50%); white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.1); opacity: 0; transition: opacity 0.3s; pointer-events: none; font-weight: bold; }
-        .show-bubble { opacity: 1; top: -35px; }
+        .speech-bubble { 
+            position: absolute; background: #fff; border-radius: 16px; padding: 6px 12px; 
+            font-size: 13px; color: #333; top: -45px; left: 50%; transform: translateX(-50%); 
+            white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+            opacity: 0; transition: opacity 0.3s, transform 0.3s; 
+            pointer-events: none; font-weight: bold; z-index: 30;
+            border: 2px solid #ffbad2;
+        }
+        .speech-bubble::after { 
+            content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); 
+            border-width: 6px 6px 0; border-style: solid; border-color: #ffbad2 transparent transparent transparent; 
+        }
+        .show-bubble { opacity: 1; transform: translateX(-50%) translateY(-5px); }
+        
+        .result-tag {
+            display: inline-block;
+            background: linear-gradient(to right, #ffd700, #ff8c00);
+            color: #333;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-left: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            animation: bounce-mascot 1s infinite;
+        }
     </style>
 
     <script type="module">
@@ -117,11 +134,9 @@
                 osc.type = type; osc.frequency.value = freq; osc.connect(gain); gain.connect(AudioSynth.ctx.destination);
                 osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, AudioSynth.ctx.currentTime + duration); osc.stop(AudioSynth.ctx.currentTime + duration);
             },
-            playRoll: () => { /* 摇骰子时由动画视觉主导，声音辅助 */ for(let i=0; i<5; i++) setTimeout(() => AudioSynth.playTone(800 + Math.random()*400, 'sine', 0.05), i * 80); },
+            playRoll: () => { for(let i=0; i<5; i++) setTimeout(() => AudioSynth.playTone(800 + Math.random()*400, 'sine', 0.05), i * 80); },
             playWin: () => { [523, 659, 784, 1046, 1318].forEach((f, i) => setTimeout(() => AudioSynth.playTone(f, 'triangle', 0.2), i * 80)); },
-            playJackpot: () => { 
-                [1000, 1200, 1500, 2000, 2500, 3000, 2500, 3000].forEach((f, i) => setTimeout(() => AudioSynth.playTone(f, 'square', 0.15), i * 60)); 
-            },
+            playJackpot: () => { [1000, 1200, 1500, 2000, 2500].forEach((f, i) => setTimeout(() => AudioSynth.playTone(f, 'square', 0.15), i * 60)); },
             playLose: () => { AudioSynth.playTone(200, 'sawtooth', 0.3); },
             playChip: () => AudioSynth.playTone(1800, 'sine', 0.05),
             playMeow: () => { 
@@ -132,47 +147,21 @@
             vibrate: (pattern) => { if (navigator.vibrate) navigator.vibrate(pattern); }
         };
 
-        // --- 烟花粒子 (暴富特效) ---
+        // --- 烟花粒子 ---
         const FireworkSystem = ({ active }) => {
             const canvasRef = useRef(null);
             useEffect(() => {
                 if (!active) return;
                 const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
                 canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-                const particles = [];
-                // 金色和红色粒子
-                const colors = ['#FFD700', '#FFA500', '#FF4500', '#FFFFFF']; 
-                
-                // 创建爆炸
+                const particles = []; const colors = ['#FFD700', '#FFA500', '#FF4500', '#FFFFFF']; 
                 for(let i=0; i<150; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = Math.random() * 15 + 5;
-                    particles.push({
-                        x: canvas.width / 2, y: canvas.height / 2,
-                        vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-                        color: colors[Math.floor(Math.random() * colors.length)],
-                        size: Math.random() * 5 + 2,
-                        life: 1.0,
-                        decay: Math.random() * 0.02 + 0.01
-                    });
+                    const angle = Math.random() * Math.PI * 2; const speed = Math.random() * 15 + 5;
+                    particles.push({ x: canvas.width/2, y: canvas.height/2, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed, color: colors[Math.floor(Math.random()*colors.length)], size: Math.random()*5+2, life: 1.0, decay: Math.random()*0.02+0.01 });
                 }
-
                 const animate = () => {
-                    if (!canvas) return;
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.globalCompositeOperation = 'lighter';
-                    let alive = false;
-                    particles.forEach(p => {
-                        if(p.life > 0) {
-                            alive = true;
-                            p.x += p.vx; p.y += p.vy;
-                            p.vx *= 0.95; p.vy *= 0.95; // 阻力
-                            p.vy += 0.2; // 重力
-                            p.life -= p.decay;
-                            ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
-                            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
-                        }
-                    });
+                    if (!canvas) return; ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.globalCompositeOperation = 'lighter'; let alive = false;
+                    particles.forEach(p => { if(p.life > 0) { alive = true; p.x += p.vx; p.y += p.vy; p.vx *= 0.95; p.vy *= 0.95; p.vy += 0.2; p.life -= p.decay; ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill(); } });
                     if (alive) requestAnimationFrame(animate); else ctx.clearRect(0, 0, canvas.width, canvas.height);
                 };
                 animate();
@@ -180,7 +169,7 @@
             return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full pointer-events-none z-[60]" />;
         };
 
-        // --- 聊天室 ---
+        // --- 聊天室 (高亮余额) ---
         const ChatRoom = ({ user, db, appId, nickname, setNickname, balance }) => {
             const [messages, setMessages] = useState([]);
             const [isOpen, setIsOpen] = useState(false);
@@ -193,7 +182,8 @@
                 if (!user || !db) return;
                 const q = window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
                 const unsubscribe = window.FB.onSnapshot(q, (snapshot) => {
-                    const msgs = []; snapshot.forEach((doc) => msgs.push({ id: doc.id, ...doc.data() }));
+                    const msgs = []; 
+                    snapshot.forEach((doc) => msgs.push({ id: doc.id, ...doc.data() }));
                     msgs.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
                     setMessages(msgs.slice(-50));
                 });
@@ -210,13 +200,18 @@
                 try { await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages'), { text: msg, senderId: user.uid.slice(0, 5), senderName: nickname || `User ${user.uid.slice(0,3)}`, senderBalance: balance, isSystem: false, createdAt: window.FB.serverTimestamp() }); } catch (err) { }
             };
             const quickEmojis = ["(≧∇≦)ﾉ", "🐟摸鱼", "💰发财", "😭破产", "🐱喵", "🚀666"];
+            const formatTime = (timestamp) => {
+                if (!timestamp) return '';
+                const date = new Date(timestamp.seconds * 1000);
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            };
 
             return (
                 <div className={`fixed bottom-24 right-4 z-50 flex flex-col items-end`}>
                     {isOpen && (
                         <div className="mb-3 w-72 h-80 glass-panel flex flex-col overflow-hidden border-0 shadow-2xl animate-fade-in-up bg-slate-900/90">
                             <div className="bg-pink-500/90 p-2 flex justify-between items-center">
-                                <span className="text-white font-bold text-xs">💬 快乐频道</span>
+                                <span className="text-white font-bold text-xs">💬 摸鱼频道</span>
                                 <button onClick={() => setIsOpen(false)} className="text-white/80 px-2">✕</button>
                             </div>
                             {isEditingName ? (
@@ -231,7 +226,18 @@
                                 {messages.map((msg) => {
                                     const isMe = msg.senderId === user?.uid.slice(0, 5);
                                     if (msg.isSystem) return (<div key={msg.id} className="flex justify-center"><span className="bg-yellow-500/20 text-yellow-200 text-[10px] px-2 py-0.5 rounded-full border border-yellow-500/30">📣 {msg.text}</span></div>);
-                                    return (<div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}><div className="flex items-center gap-1 mb-0.5 px-1"><span className="text-[10px] text-white/50">{msg.senderName}</span></div><div className={`max-w-[90%] px-3 py-1.5 rounded-2xl text-xs break-words ${isMe ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>{msg.text}</div></div>);
+                                    return (
+                                        <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                                            <div className="flex items-center gap-1 mb-0.5 px-1">
+                                                <span className="text-[10px] text-white/50">{msg.senderName}</span>
+                                                <span className="text-[9px] text-white/30 ml-1">{formatTime(msg.createdAt)}</span>
+                                            </div>
+                                            <div className={`max-w-[90%] px-3 py-1.5 rounded-2xl text-xs break-words ${isMe ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
+                                                {msg.text}
+                                                {msg.senderBalance !== undefined && <div className={`text-[9px] mt-1 text-right font-bold ${isMe ? 'text-yellow-200' : 'text-yellow-400'}`}>💰{msg.senderBalance.toLocaleString()}</div>}
+                                            </div>
+                                        </div>
+                                    );
                                 })}
                                 <div ref={messagesEndRef} />
                             </div>
@@ -246,27 +252,19 @@
             );
         };
 
-        // --- 3D 骰子 (解决卡顿版) ---
-        const Die3D = ({ value, rolling }) => {
+        // --- 3D 骰子 ---
+        const Die3D = ({ value, rolling, isGolden }) => {
             const [style, setStyle] = useState({});
-            const rollingAnim = useRef(null);
-
             useEffect(() => {
                 if (rolling) {
-                    // 摇动时：应用无限旋转 CSS 动画
                     setStyle({ animation: `tumble 0.6s linear infinite` });
                 } else {
-                    // 停止时：计算最终角度，并应用平滑过渡
                     let rX=0, rY=0;
                     switch(value) { case 1: rX=0; rY=0; break; case 2: rX=0; rY=180; break; case 3: rX=0; rY=-90; break; case 4: rX=0; rY=90; break; case 5: rX=-90; rY=0; break; case 6: rX=90; rY=0; break; }
-                    
-                    // 为了视觉连贯，加上多圈旋转 (1080 = 3圈)
-                    const finalTransform = `rotateX(${rX + 1080}deg) rotateY(${rY + 1080}deg)`;
-                    
                     setStyle({ 
-                        animation: 'none', // 停止动画
-                        transform: finalTransform,
-                        transition: 'transform 0.5s cubic-bezier(0.1, 0.9, 0.2, 1)' // 刹车曲线
+                        animation: 'none', 
+                        transform: `rotateX(${rX + 1080}deg) rotateY(${rY + 1080}deg)`,
+                        transition: 'transform 0.5s cubic-bezier(0.1, 0.9, 0.2, 1)' 
                     });
                 }
             }, [value, rolling]);
@@ -281,7 +279,7 @@
             return (
                 <div className="scene mx-2">
                     <div className="cube-wrapper" style={style}>
-                        <div className="cube"><Face className="front" dots={[{col:2,row:2,val:'center'}]} /><Face className="back" dots={[{col:1,row:1},{col:3,row:3}]} /><Face className="right" dots={[{col:1,row:1},{col:2,row:2},{col:3,row:3}]} /><Face className="left" dots={[{col:1,row:1},{col:1,row:3},{col:3,row:1},{col:3,row:3}]} /><Face className="top" dots={[{col:1,row:1},{col:3,row:1},{col:2,row:2},{col:1,row:3},{col:3,row:3}]} /><Face className="bottom" dots={[{col:1,row:1},{col:1,row:2},{col:1,row:3},{col:3,row:1},{col:3,row:2},{col:3,row:3}]} /></div>
+                        <div className={`cube ${isGolden ? 'golden' : ''}`}><Face className="front" dots={[{col:2,row:2,val:'center'}]} /><Face className="back" dots={[{col:1,row:1},{col:3,row:3}]} /><Face className="right" dots={[{col:1,row:1},{col:2,row:2},{col:3,row:3}]} /><Face className="left" dots={[{col:1,row:1},{col:1,row:3},{col:3,row:1},{col:3,row:3}]} /><Face className="top" dots={[{col:1,row:1},{col:3,row:1},{col:2,row:2},{col:1,row:3},{col:3,row:3}]} /><Face className="bottom" dots={[{col:1,row:1},{col:1,row:2},{col:1,row:3},{col:3,row:1},{col:3,row:2},{col:3,row:3}]} /></div>
                         <div className={`shadow-spot ${rolling ? 'scale-50' : 'scale-100'}`}></div>
                     </div>
                 </div>
@@ -290,15 +288,36 @@
 
         const FloatingText = ({ text, x, y, color }) => <div className="floating-text" style={{ left: x, top: y, fontSize: '24px', color: color || '#ffd700' }}>{text}</div>;
 
+        // --- 话痨荷官 ---
         const MascotDealer = ({ gameState }) => {
             const [msg, setMsg] = useState("");
             const [anim, setAnim] = useState("mascot-idle");
             useEffect(() => {
+                let timer;
+                if(gameState === 'idle') {
+                    timer = setInterval(() => {
+                        if(Math.random() > 0.7) {
+                            const lines = ["下一把必中!", "发财了请吃鱼~", "快点下注呀", "喵呜~", "今天好运!"];
+                            setMsg(lines[Math.floor(Math.random() * lines.length)]);
+                            setTimeout(() => setMsg(""), 3000);
+                        }
+                    }, 6000);
+                }
+                return () => clearInterval(timer);
+            }, [gameState]);
+
+            useEffect(() => {
                 if(gameState === 'rolling') { setAnim("mascot-rolling"); setMsg("摇摇摇!"); }
-                else if(gameState === 'revealed') { setAnim("mascot-win"); setMsg("开!"); setTimeout(()=>setMsg(""), 2000); }
+                else if(gameState === 'revealed') { setAnim("mascot-win"); }
                 else { setAnim("mascot-idle"); }
             }, [gameState]);
-            const poke = () => { AudioSynth.playMeow(); setAnim("mascot-win"); setMsg("喵呜~"); setTimeout(() => { setMsg(""); if(gameState==='idle') setAnim("mascot-idle"); }, 1500); };
+
+            const poke = (e) => {
+                AudioSynth.playMeow(); setAnim("mascot-win");
+                const phrases = ["别戳我!", "摸摸头~", "求包养~", "喵!", "再来一局?"];
+                setMsg(phrases[Math.floor(Math.random()*phrases.length)]);
+                setTimeout(() => { setMsg(""); if(gameState==='idle') setAnim("mascot-idle"); }, 2000);
+            };
             return (
                 <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center cursor-pointer" onClick={poke}>
                     <div className={`relative w-20 h-20 sm:w-24 sm:h-24 ${anim}`}>
@@ -315,19 +334,22 @@
             const [balance, setBalance] = useState(10000);
             const [bets, setBets] = useState({ small: 0, big: 0, triple: 0 });
             const [pointBets, setPointBets] = useState({});
-            const [specialBets, setSpecialBets] = useState({}); // s123, s456, t1, t2... t6
+            const [specialBets, setSpecialBets] = useState({}); 
             const [gameState, setGameState] = useState('idle');
             const [dice, setDice] = useState([1, 1, 1]);
             const [history, setHistory] = useState([]);
             const [selectedChip, setSelectedChip] = useState(100);
             const [nickname, setNickname] = useState('');
             const [winningZones, setWinningZones] = useState([]);
+            const [winningPoints, setWinningPoints] = useState([]);
+            const [winningSpecials, setWinningSpecials] = useState([]);
             const [floatingTexts, setFloatingTexts] = useState([]);
             const [betHistory, setBetHistory] = useState([]); 
             const [user, setUser] = useState(null);
             const [firebaseReady, setFirebaseReady] = useState(false);
             const [showRelief, setShowRelief] = useState(false);
             const [showFireworks, setShowFireworks] = useState(false);
+            const [resultText, setResultText] = useState(null); // 保存每局结果文案
 
             const dbRef = useRef(null);
             const authRef = useRef(null);
@@ -394,14 +416,14 @@
 
             const rollDice = () => {
                 if (betHistory.length === 0) { alert("请先下注喵！"); return; }
-                setGameState('rolling'); setWinningZones([]); setFloatingTexts([]); setShowFireworks(false);
+                setGameState('rolling'); setWinningZones([]); setFloatingTexts([]); setShowFireworks(false); setResultText(null);
                 AudioSynth.playRoll(); AudioSynth.vibrate([50, 50, 50]);
                 setTimeout(() => {
                     const d1 = Math.floor(Math.random() * 6) + 1; const d2 = Math.floor(Math.random() * 6) + 1; const d3 = Math.floor(Math.random() * 6) + 1;
                     const total = d1 + d2 + d3; const isTriple = (d1 === d2 && d2 === d3);
                     let mainResult = !isTriple ? (total >= 11 ? 'big' : 'small') : 'triple';
                     setDice([d1, d2, d3]);
-                    setTimeout(() => handleResult(d1, d2, d3, total, mainResult, isTriple), 600); // 这里时间缩短，因为CSS动画会自动停
+                    setTimeout(() => handleResult(d1, d2, d3, total, mainResult, isTriple), 600); 
                 }, 1000); 
             };
 
@@ -410,19 +432,34 @@
                 let totalWin = 0; const winners = []; const newFloatingTexts = [];
                 const diceStr = [d1, d2, d3].sort().join(''); 
 
-                // 1. 主玩法
-                if (!isTriple && total >= 4 && total <= 10) { if (bets.small > 0) { const win = bets.small * 2; totalWin += win; newFloatingTexts.push({ id: 's', text: `+${win}`, x: '20%', y: '50%' }); } winners.push('small'); }
-                if (!isTriple && total >= 11 && total <= 17) { if (bets.big > 0) { const win = bets.big * 2; totalWin += win; newFloatingTexts.push({ id: 'b', text: `+${win}`, x: '80%', y: '50%' }); } winners.push('big'); }
-                if (isTriple) { if (bets.triple > 0) { const win = bets.triple * 25; totalWin += win; newFloatingTexts.push({ id: 't', text: `+${win}`, x: '50%', y: '40%' }); } winners.push('triple'); }
+                let resultStr = "";
+                // 1. Main
+                if (!isTriple && total >= 4 && total <= 10) { 
+                    if (bets.small > 0) { const win = bets.small * 2; totalWin += win; newFloatingTexts.push({ id: 's', text: `+${win}`, x: '20%', y: '50%' }); } 
+                    winners.push('small'); 
+                    resultStr = `${total}点 小`;
+                }
+                if (!isTriple && total >= 11 && total <= 17) { 
+                    if (bets.big > 0) { const win = bets.big * 2; totalWin += win; newFloatingTexts.push({ id: 'b', text: `+${win}`, x: '80%', y: '50%' }); } 
+                    winners.push('big'); 
+                    resultStr = `${total}点 大`;
+                }
+                if (isTriple) { 
+                    if (bets.triple > 0) { const win = bets.triple * 25; totalWin += win; newFloatingTexts.push({ id: 't', text: `+${win}`, x: '50%', y: '40%' }); } 
+                    winners.push('triple'); 
+                    resultStr = `${total}点 豹子!`;
+                }
+                
+                setResultText(resultStr);
 
-                // 2. 点数玩法
+                // 2. Points
                 if (pointBets[total] > 0) { const win = pointBets[total] * 51; totalWin += win; winners.push(`p${total}`); newFloatingTexts.push({ id: 'p', text: `🎯 +${win}`, x: '50%', y: '30%', color: '#FF00FF' }); }
 
-                // 3. 特殊玩法 (500倍)
+                // 3. Specials (500x)
                 if (diceStr === '123' && specialBets.s123 > 0) { const win = specialBets.s123 * 501; totalWin += win; winners.push('s123'); newFloatingTexts.push({ id: 'sp1', text: `🚀暴富 +${win}`, x: '50%', y: '50%', color: 'red' }); setShowFireworks(true); AudioSynth.playJackpot(); }
                 if (diceStr === '456' && specialBets.s456 > 0) { const win = specialBets.s456 * 501; totalWin += win; winners.push('s456'); newFloatingTexts.push({ id: 'sp2', text: `🚀暴富 +${win}`, x: '50%', y: '50%', color: 'red' }); setShowFireworks(true); AudioSynth.playJackpot(); }
                 
-                // 4. 特定豹子 (500倍) - 111, 222...
+                // 4. Specific Triples
                 if (isTriple) {
                     const key = `t${d1}`;
                     if (specialBets[key] > 0) {
@@ -443,7 +480,7 @@
                 } else { AudioSynth.playLose(); AudioSynth.vibrate(300); }
 
                 setHistory(prev => [...prev, { result: mainResult, total, dice: [d1, d2, d3] }].slice(-10)); 
-                setTimeout(() => { setGameState('idle'); setBets({ small: 0, big: 0, triple: 0 }); setPointBets({}); setSpecialBets({}); setBetHistory([]); setWinningZones([]); setFloatingTexts([]); setShowFireworks(false); }, 3500);
+                setTimeout(() => { setGameState('idle'); setBets({ small: 0, big: 0, triple: 0 }); setPointBets({}); setSpecialBets({}); setBetHistory([]); setWinningZones([]); setFloatingTexts([]); setShowFireworks(false); setResultText(null); }, 3500);
             };
 
             const chips = [100, 500, 1000, 5000];
@@ -458,9 +495,12 @@
 
                     {/* Header */}
                     <div className="z-50 w-full max-w-4xl p-3 flex justify-between items-center relative flex-shrink-0">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-pink-300 shadow-lg bg-white flex-shrink-0"><img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} /></div>
-                            <div className="min-w-0"><h1 className="font-cute text-xl text-pink-200 drop-shadow-sm">多宝骰子</h1></div>
+                            <div className="min-w-0 flex items-baseline gap-2">
+                                <h1 className="font-cute text-xl text-pink-200 drop-shadow-sm truncate">多宝骰子</h1>
+                                {resultText && <span className="result-tag">{resultText}</span>}
+                            </div>
                         </div>
                         <div className="glass-panel px-3 py-1 flex items-center gap-2 flex-shrink-0 ml-2 border-pink-300/30"><span className="text-yellow-300 text-base">💰</span><span className="text-lg font-mono font-bold text-white">{balance.toLocaleString()}</span></div>
                     </div>
@@ -471,10 +511,9 @@
                         <div className="relative w-full flex justify-center items-center mt-8 mb-4 flex-shrink-0">
                             <div className="relative w-[85%] max-w-md h-36 flex justify-center items-center bg-white/5 rounded-[3rem] border border-pink-200/20 shadow-xl backdrop-blur-sm">
                                 <MascotDealer gameState={gameState} />
-                                {gameState === 'revealed' && <div className="absolute -top-12 animate-bounce z-30 w-full text-center pointer-events-none"><span className="font-cute text-5xl text-yellow-300 drop-shadow-lg stroke-2">{dice.reduce((a,b)=>a+b,0)}</span><span className="text-lg font-bold text-white ml-2">点!</span></div>}
-                                <Die3D value={dice[0]} rolling={gameState === 'rolling'} />
-                                <Die3D value={dice[1]} rolling={gameState === 'rolling'} />
-                                <Die3D value={dice[2]} rolling={gameState === 'rolling'} />
+                                <Die3D value={dice[0]} rolling={gameState === 'rolling'} isGolden={winningZones.includes('triple')} />
+                                <Die3D value={dice[1]} rolling={gameState === 'rolling'} isGolden={winningZones.includes('triple')} />
+                                <Die3D value={dice[2]} rolling={gameState === 'rolling'} isGolden={winningZones.includes('triple')} />
                             </div>
                         </div>
                         <div className="flex gap-1 h-5 opacity-70 mb-4">{history.map((h, i) => <div key={i} className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-bold shadow-sm ${h.result==='big'?'bg-red-400':h.result==='small'?'bg-blue-400':'bg-green-400'}`}>{h.result==='big'?'大':h.result==='small'?'小':'豹'}</div>)}</div>
