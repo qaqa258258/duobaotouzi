@@ -187,10 +187,13 @@
             const [inputText, setInputText] = useState("");
             const [isEditingName, setIsEditingName] = useState(!nickname);
             const [tempName, setTempName] = useState(nickname);
+            const [avatar, setAvatar] = useState(() => localStorage.getItem('dice_game_avatar') || '🐱');
+            const [tempAvatar, setTempAvatar] = useState(() => localStorage.getItem('dice_game_avatar') || '🐱');
             const messagesEndRef = useRef(null);
 
             useEffect(() => {
                 if (!user || !db) return;
+
                 const q = window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
                 const unsubscribe = window.FB.onSnapshot(q, (snapshot) => {
                     const msgs = []; 
@@ -203,6 +206,7 @@
 
             useEffect(() => {
                 if (!isOpen) return;
+
                 const el = messagesEndRef.current;
                 if (!el) return;
                 // 使用 setTimeout 确保在 DOM 更新后再滚动，避免移动端有时不生效
@@ -211,13 +215,32 @@
                 }, 0);
             }, [messages, isOpen]);
 
-            const saveNickname = () => { if(tempName.trim()) { setNickname(tempName.trim()); setIsEditingName(false); localStorage.setItem('dice_game_nickname', tempName.trim()); } };
+            const formatTime = (timestamp) => {
+                if (!timestamp || !timestamp.seconds) return '';
+                const date = new Date(timestamp.seconds * 1000);
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            };
+
+            const saveNickname = () => { 
+                if(tempName.trim()) { 
+                    setNickname(tempName.trim()); 
+                    localStorage.setItem('dice_game_nickname', tempName.trim()); 
+                }
+                if (tempAvatar.trim()) {
+                    setAvatar(tempAvatar.trim());
+                    localStorage.setItem('dice_game_avatar', tempAvatar.trim());
+                }
+                setIsEditingName(false); 
+            };
+
             const sendMessage = async (textToSend) => {
                 const msg = textToSend || inputText.trim();
                 if (!msg || !user) return;
                 if(!textToSend) setInputText("");
-                try { await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages'), { text: msg, senderId: user.uid.slice(0, 5), senderName: nickname || `User ${user.uid.slice(0,3)}`, senderBalance: balance, isSystem: false, createdAt: window.FB.serverTimestamp() }); } catch (err) { }
+                const displayName = `${avatar || ''} ${nickname || `User ${user.uid.slice(0,3)}`}`.trim();
+                try { await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages'), { text: msg, senderId: user.uid.slice(0, 5), senderName: displayName, senderBalance: balance, isSystem: false, createdAt: window.FB.serverTimestamp() }); } catch (err) { }
             };
+
             const quickEmojis = ["(≧∇≦)ﾉ", "🍀好运", "💰发财", "😭输光", "🐱喵", "🚀起飞"];
 
             return (
@@ -229,20 +252,38 @@
                                 <button onClick={() => setIsOpen(false)} className="text-white/80 px-2">✕</button>
                             </div>
                             {isEditingName ? (
-                                <div className="absolute inset-0 z-20 bg-slate-900/95 flex flex-col items-center justify-center p-4">
-                                    <input type="text" value={tempName} onChange={(e)=>setTempName(e.target.value)} placeholder="请输入昵称" className="w-full bg-white/10 border border-indigo-400 rounded-full px-4 py-2 text-white mb-4 text-center text-sm" />
-                                    <button onClick={saveNickname} className="bg-indigo-500 text-white px-6 py-2 rounded-full font-bold text-sm">进入</button>
+                                <div className="absolute inset-0 z-20 bg-slate-900/95 flex flex-col items-center justify-center p-4 space-y-3">
+                                    <input type="text" value={tempName} onChange={(e)=>setTempName(e.target.value)} placeholder="请输入昵称" className="w-full bg-white/10 border border-indigo-400 rounded-full px-4 py-2 text-white text-center text-sm" />
+                                    <input type="text" value={tempAvatar} onChange={(e)=>setTempAvatar(e.target.value)} placeholder="头像 emoji，如 🐱" className="w-full bg-white/10 border border-indigo-400 rounded-full px-4 py-2 text-white text-center text-sm" />
+                                    <div className="flex gap-2 text-xl">
+                                        {['🐱','🐯','🐶','🐼','🐻','🐵'].map(em => (
+                                            <button key={em} type="button" onClick={()=>setTempAvatar(em)} className={`w-8 h-8 flex items-center justify-center rounded-full ${tempAvatar===em?'bg-indigo-500':'bg-white/10'}`}>{em}</button>
+                                        ))}
+                                    </div>
+                                    <button onClick={saveNickname} className="mt-1 bg-indigo-500 text-white px-6 py-2 rounded-full font-bold text-sm">进入</button>
                                 </div>
                             ) : (
-                                <div className="bg-indigo-900/30 px-3 py-1 text-[10px] text-indigo-200 flex justify-between cursor-pointer border-b border-white/5" onClick={()=>setIsEditingName(true)}><span>{nickname}</span><span>(修改)</span></div>
+                                <div className="bg-indigo-900/30 px-3 py-1 text-[10px] text-indigo-200 flex justify-between items-center cursor-pointer border-b border-white/5" onClick={()=>setIsEditingName(true)}>
+                                    <span className="flex items-center gap-1">
+                                        <span>{avatar}</span>
+                                        <span>{nickname}</span>
+                                    </span>
+                                    <span>(修改)</span>
+                                </div>
                             )}
+
                             <div className="flex-1 overflow-y-auto p-2 space-y-2 chat-scroll">
                                 {messages.map((msg) => {
                                     const isMe = msg.senderId === user?.uid.slice(0, 5);
+
                                     if (msg.isSystem) return (<div key={msg.id} className="flex justify-center"><span className="bg-yellow-500/20 text-yellow-200 text-[10px] px-2 py-0.5 rounded-full border border-yellow-500/30">📣 {msg.text}</span></div>);
                                     return (
                                         <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                                            <div className="flex items-center gap-1 mb-0.5 px-1"><span className="text-[10px] text-white/50">{msg.senderName}</span></div>
+                                            <div className="flex items-center gap-1 mb-0.5 px-1">
+                                                <span className="text-[10px] text-white/70">{msg.senderName}</span>
+                                                <span className="text-[9px] text-white/30 ml-1">{formatTime(msg.createdAt)}</span>
+                                            </div>
+
                                             <div className={`max-w-[90%] px-3 py-1.5 rounded-xl text-xs break-words ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
                                                 {msg.text}
                                                 {msg.senderBalance !== undefined && <div className={`text-[8px] mt-1 text-right font-bold ${isMe ? 'text-yellow-200' : 'text-yellow-400'}`}>💰{msg.senderBalance.toLocaleString()}</div>}
@@ -301,6 +342,7 @@
 
         // --- 荷官 (Fix: 允许图片超出容器) ---
         const MascotDealer = ({ gameState }) => {
+
             const [msg, setMsg] = useState("");
             const [anim, setAnim] = useState("mascot-idle");
             useEffect(() => {
@@ -310,8 +352,9 @@
             }, [gameState]);
             const poke = () => { AudioSynth.playMeow(); setAnim("mascot-win"); setMsg("喵呜~"); setTimeout(() => { setMsg(""); if(gameState==='idle') setAnim("mascot-idle"); }, 1500); };
             return (
-                <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center cursor-pointer" onClick={poke}>
+                <div className="absolute -top-14 left-1/2 transform -translate-x-1/2 z-[60] flex flex-col items-center cursor-pointer" onClick={poke}>
                     <div className={`relative w-24 h-24 ${anim}`}>
+
                         <img src="1.jpg" className="w-full h-full rounded-full border-4 border-indigo-400 shadow-lg object-cover bg-white" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
                     </div>
                     <div className={`speech-bubble ${msg ? 'show-bubble' : ''}`}>{msg}</div>
