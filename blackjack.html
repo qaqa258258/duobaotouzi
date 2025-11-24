@@ -102,6 +102,7 @@
         .mascot-idle { animation: bounce-mascot 3s infinite ease-in-out; }
         .mascot-shock { animation: bounce-mascot 0.2s infinite; }
         .mascot-love { animation: heart-beat 0.5s infinite; }
+        .mascot-super { animation: heart-beat 0.3s infinite; box-shadow: 0 0 30px #fbbf24; border-color: #fbbf24 !important; }
         
         .speech-bubble { 
             position: absolute; background: #fff; border-radius: 12px; padding: 6px 12px; 
@@ -131,6 +132,13 @@
             content: '🔥'; position: absolute; top: -10px; right: -10px; font-size: 20px; z-index: 50;
             animation: bounce-mascot 1s infinite;
         }
+
+        /* 超级投喂特效 - 雨落 */
+        @keyframes rain-fall { 
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 1; } 
+            100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } 
+        }
+        .rain-item { position: absolute; animation: rain-fall linear forwards; top: -50px; z-index: 90; }
 
         /* 结果浮层 */
         .result-overlay { animation: popIn 0.3s ease-out; }
@@ -258,7 +266,7 @@
             }
         };
 
-        // --- 聊天室组件 (保持不变) ---
+        // --- 聊天室组件 ---
         const ChatRoom = ({ user, db, appId, nickname, setNickname, balance }) => {
             const [messages, setMessages] = useState([]);
             const [isOpen, setIsOpen] = useState(false);
@@ -317,7 +325,7 @@
             const quickEmojis = ["(≧∇≦)ﾉ", "🍀好运", "💰发财", "😭输光", "🐱喵", "🚀起飞"];
 
             return (
-                <div className={`fixed bottom-32 right-4 z-[60] flex flex-col items-end`}>
+                <div className={`fixed bottom-28 right-4 z-[90] flex flex-col items-end`}>
                     {isOpen && (
                         <div className="mb-2 w-72 h-80 glass-panel flex flex-col overflow-hidden border border-indigo-500/30 shadow-2xl animate-fade-in-up bg-slate-900/95">
                             <div className="bg-indigo-600/90 p-2 flex justify-between items-center">
@@ -377,12 +385,41 @@
             );
         };
 
+        // --- 超级投喂特效 ---
+        const SuperFeedEffect = () => {
+            const drops = Array.from({length: 30}).map((_,i) => ({
+                left: Math.random() * 100 + '%',
+                delay: Math.random() * 2 + 's',
+                duration: Math.random() * 1.5 + 1.5 + 's',
+                icon: Math.random() > 0.6 ? '🐟' : (Math.random()>0.5 ? '💖' : '💰'),
+                size: Math.random() * 1.5 + 1 + 'rem'
+            }));
+            
+            return (
+                <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
+                    <div className="absolute inset-0 bg-yellow-500/20 animate-pulse"></div>
+                    {drops.map((d, i) => (
+                        <div key={i} className="rain-item" style={{left: d.left, animationDelay: d.delay, animationDuration: d.duration, fontSize: d.size}}>
+                            {d.icon}
+                        </div>
+                    ))}
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-bounce">
+                        <div className="text-6xl mb-2">😻</div>
+                        <div className="text-4xl font-cute text-yellow-300 drop-shadow-[0_0_10px_red] whitespace-nowrap bg-black/50 px-4 py-2 rounded-xl border-2 border-yellow-400">
+                            猫神降临！财源广进！
+                        </div>
+                    </div>
+                </div>
+            )
+        };
+
         // --- 荷官吉祥物 ---
-        const MascotDealer = ({ gameState, resultType, splitWinCount, onFeed, feedAnim }) => {
+        const MascotDealer = ({ gameState, resultType, splitWinCount, onFeed, feedAnim, feedCount, showSuperFeed }) => {
             const [msg, setMsg] = useState("");
             const [anim, setAnim] = useState("mascot-idle");
             
             useEffect(() => {
+                if (showSuperFeed) { setAnim("mascot-super"); setMsg("喵喵喵！爆米啦！"); return; }
                 if (feedAnim) { setAnim("mascot-love"); setMsg("老板大气! 爱你喵~"); return; }
 
                 if (gameState === 'betting') { setAnim("mascot-idle"); setMsg("加点注吗？"); }
@@ -400,7 +437,7 @@
                         else { setMsg("平局~"); }
                     }
                 }
-            }, [gameState, resultType, splitWinCount, feedAnim]);
+            }, [gameState, resultType, splitWinCount, feedAnim, showSuperFeed]);
 
             const poke = () => { AudioSynth.playMeow(); setAnim("mascot-shock"); setMsg("偷看底牌？达咩！"); setTimeout(() => { setMsg(""); setAnim("mascot-idle"); }, 1500); };
 
@@ -411,8 +448,9 @@
                             <img src="1.jpg" className="w-full h-full rounded-full border-4 border-indigo-400 shadow-lg object-cover bg-white" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
                         </div>
                         {/* 投喂按钮 */}
-                        <button onClick={onFeed} className="absolute -bottom-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-white shadow-lg active:scale-90 transition-transform z-10">
-                            <span className="text-lg">🐟</span>
+                        <button onClick={onFeed} className="absolute -bottom-2 -right-2 w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-white shadow-lg active:scale-90 transition-transform z-10 overflow-visible">
+                            <span className="text-xl">🐟</span>
+                            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold w-5 h-5 flex items-center justify-center rounded-full border border-white shadow-sm">{feedCount}/10</span>
                         </button>
                     </div>
                     <div className={`speech-bubble ${msg ? 'show-bubble' : ''}`}>{msg}</div>
@@ -491,13 +529,12 @@
         const getPoker3Win = (card1, card2, dealerCard, bet) => {
             const cards = [card1, card2, dealerCard].sort((a,b) => a.weight - b.weight);
             const suits = cards.map(c => c.suit);
-            const values = cards.map(c => c.weight); // Simplified for straights using weights 2-11. (Real Poker 3 uses rank)
+            const values = cards.map(c => c.weight); 
             const ranks = cards.map(c => VALUES.indexOf(c.value)); // 0-12
             ranks.sort((a,b)=>a-b);
             
             const isFlush = suits[0] === suits[1] && suits[1] === suits[2];
-            const isStraight = (ranks[1] === ranks[0] + 1 && ranks[2] === ranks[1] + 1) || (ranks[0]===0 && ranks[1]===9 && ranks[2]===10) || (ranks[0]===0 && ranks[1]===1 && ranks[2]===12); // Handle A,2,3 or Q,K,A? 21+3 usually A,2,3 or Q,K,A. A is 0 or 12.
-            // Check specific straights: A,2,3 (0,1,2) OK. Q,K,A (0,11,12) -> (0,11,12) sorted.
+            const isStraight = (ranks[1] === ranks[0] + 1 && ranks[2] === ranks[1] + 1) || (ranks[0]===0 && ranks[1]===9 && ranks[2]===10) || (ranks[0]===0 && ranks[1]===1 && ranks[2]===12); 
             
             const isTrips = ranks[0] === ranks[1] && ranks[1] === ranks[2];
 
@@ -542,6 +579,9 @@
             // New Features State
             const [streak, setStreak] = useState(0);
             const [feedAnim, setFeedAnim] = useState(false);
+            const [feedCount, setFeedCount] = useState(0);
+            const [showSuperFeed, setShowSuperFeed] = useState(false);
+            const [firebaseReady, setFirebaseReady] = useState(false);
 
             const dbRef = useRef(null);
             const appIdRef = useRef('default-app-id');
@@ -563,7 +603,12 @@
                         const auth = window.FB.getAuth(app);
                         dbRef.current = window.FB.getFirestore(app);
                         await window.FB.signInAnonymously(auth);
-                        window.FB.onAuthStateChanged(auth, (u) => { if (u) setUser(u); });
+                        window.FB.onAuthStateChanged(auth, (u) => { 
+                            if (u) { 
+                                setUser(u); 
+                                setFirebaseReady(true); 
+                            } 
+                        });
                     } catch (e) { console.error(e); }
                 };
                 initFirebase();
@@ -611,14 +656,31 @@
 
             const handleFeedMascot = () => {
                 if (balance < 50) return;
-                AudioSynth.playKiss();
-                setFeedAnim(true);
                 updateBalance(balance - 50);
-                setTimeout(() => setFeedAnim(false), 2000);
                 
-                // 概率触发聊天消息
-                if (Math.random() > 0.5 && user) {
-                    try { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `${nickname || '老板'} 给猫猫买了小鱼干!`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); } catch(e) {}
+                const newCount = feedCount + 1;
+                setFeedCount(newCount);
+
+                if (newCount >= 10) {
+                    // Trigger Super Effect
+                    setFeedCount(0);
+                    setShowSuperFeed(true);
+                    AudioSynth.playJackpot();
+                    
+                    // Broadcast
+                    if (user) {
+                         try { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `🔥 ${nickname || '老板'} 触发了猫神降临！全场膜拜！`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); } catch(e) {}
+                    }
+
+                    setTimeout(() => setShowSuperFeed(false), 5000);
+                } else {
+                    AudioSynth.playKiss();
+                    setFeedAnim(true);
+                    setTimeout(() => setFeedAnim(false), 2000);
+                    // Chance for chat msg
+                    if (Math.random() > 0.7 && user) {
+                         try { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `${nickname || '老板'} 给猫猫买了小鱼干!`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); } catch(e) {}
+                    }
                 }
             };
 
@@ -837,9 +899,6 @@
 
             const playDealerTurn = async (finalPlayerHands) => {
                 // If everyone busted or has 5-Card Charlie (auto win), Dealer doesn't need to play normally
-                // But if player has 5-Card Charlie, they win UNLESS dealer has BJ. 
-                // But dealer BJ is checked at start usually. 
-                // Standard rule: 5-Card Charlie beats non-BJ dealer hands.
                 
                 const needDealerPlay = finalPlayerHands.some(h => h.status === 'stand');
 
@@ -885,7 +944,6 @@
                     if (hand.status === 'bust') {
                         // Lost
                     } else if (hand.status === 'dragon') {
-                        // 5-Card Charlie pays 2:1 usually in arcade versions for fun, or 1:1. Let's do 2:1 for fun.
                         handWin = hand.bet * 3; 
                         winCount++;
                     } else if (dealerHasBlackjack) {
@@ -977,8 +1035,10 @@
                 <div className="theme-bg text-white flex flex-col h-full w-full relative">
                     <div className="absolute inset-0 theme-overlay pointer-events-none"></div>
                     <div className="absolute inset-0 pointer-events-none z-50">{floatingTexts.map(ft => <FloatingText key={ft.id} text={ft.text} x={ft.x} y={ft.y} color={ft.color} />)}</div>
+                    {showSuperFeed && <SuperFeedEffect />}
 
-                    {dbRef.current && <ChatRoom user={user} db={dbRef.current} appId={appIdRef.current} nickname={nickname} setNickname={setNickname} balance={balance} />}
+                    {/* ChatRoom Visibility Fix: Removed Strict firebaseReady check, rely on UI only, default open */}
+                    <ChatRoom user={user} db={dbRef.current} appId={appIdRef.current} nickname={nickname} setNickname={setNickname} balance={balance} />
 
                     {/* 保险弹窗 */}
                     {gameState === 'insurance' && (
@@ -1011,7 +1071,6 @@
                     {/* Header */}
                     <div className="z-50 w-full max-w-4xl p-3 flex justify-between items-center relative flex-shrink-0">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                            {/* 更新：使用 1.jpg 猫咪头像 + 连胜火焰 */}
                             <div className={`w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center border-2 border-indigo-400 overflow-visible shadow-lg flex-shrink-0 relative ${streak >= 3 ? 'streak-fire' : ''}`}>
                                 <div className="w-full h-full rounded-full overflow-hidden">
                                     <img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
@@ -1033,11 +1092,10 @@
                     {/* Content Area */}
                     <div className="flex-1 overflow-y-auto w-full flex flex-col items-center pb-48 hide-scrollbar">
                         
-                        {/* 增加顶部间距 mt-28 以防止荷官遮挡 */}
                         <div className="relative w-full flex flex-col justify-center items-center mt-28 mb-4 flex-shrink-0 max-w-lg">
                             <div className="game-container w-[95%] p-4 flex flex-col items-center min-h-[380px] justify-between">
                                 <div className="table-felt-pattern"></div>
-                                <MascotDealer gameState={gameState} resultType={resultType} splitWinCount={splitWinCount} onFeed={handleFeedMascot} feedAnim={feedAnim} />
+                                <MascotDealer gameState={gameState} resultType={resultType} splitWinCount={splitWinCount} onFeed={handleFeedMascot} feedAnim={feedAnim} feedCount={feedCount} showSuperFeed={showSuperFeed} />
                                 
                                 {/* 装饰性牌堆 */}
                                 <div className="absolute right-4 top-10 w-16 h-20 bg-indigo-900/50 rounded-lg border border-white/10 flex items-center justify-center transform rotate-6 z-0">
