@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>多宝 21 点 (Blackjack) - 皇家赌场版</title>
-    
+
     <!-- 原版 CDN (Google/Unpkg) -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -12,23 +13,40 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Google 字体 -->
-    <link href="https://fonts.googleapis.com/css2?family=Zcool+KuaiLe&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Zcool+KuaiLe&family=Roboto:wght@400;700;900&display=swap"
+        rel="stylesheet">
 
     <style>
-        body, html {
-            height: 100%; margin: 0; padding: 0; font-family: 'Roboto', sans-serif;
-            background-color: #0f172a; 
-            overflow: hidden; touch-action: pan-y; user-select: none; -webkit-tap-highlight-color: transparent;
+        body,
+        html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #0f172a;
+            overflow: hidden;
+            touch-action: pan-y;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        #root { height: 100dvh; display: flex; flex-direction: column; }
-        .font-cute { font-family: 'Zcool KuaiLe', sans-serif; }
+
+        #root {
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .font-cute {
+            font-family: 'Zcool KuaiLe', sans-serif;
+        }
 
         /* 主题背景 */
-        .theme-bg { 
-            background: radial-gradient(circle at 50% 0%, #2e1065 0%, #020617 100%); 
+        .theme-bg {
+            background: radial-gradient(circle at 50% 0%, #2e1065 0%, #020617 100%);
         }
+
         .theme-overlay {
-            background-image: 
+            background-image:
                 linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
             background-size: 40px 40px;
@@ -44,21 +62,24 @@
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
             border-radius: 20px;
         }
-        
+
         /* 游戏容器 - 高级桌台质感 */
         .game-container {
             position: relative;
             background: radial-gradient(circle at 50% -20%, #334155 0%, #1e293b 60%, #0f172a 100%);
             border: 2px solid rgba(139, 92, 246, 0.3);
-            box-shadow: 
+            box-shadow:
                 0 0 0 1px rgba(255, 255, 255, 0.05) inset,
                 0 20px 50px -10px rgba(0, 0, 0, 0.5),
                 0 0 30px rgba(139, 92, 246, 0.1);
             border-radius: 40px;
-            overflow: visible !important; 
+            overflow: visible !important;
         }
+
         .table-felt-pattern {
-            position: absolute; inset: 0; opacity: 0.1;
+            position: absolute;
+            inset: 0;
+            opacity: 0.1;
             background-image: radial-gradient(#fff 1px, transparent 1px);
             background-size: 20px 20px;
             pointer-events: none;
@@ -67,137 +88,380 @@
 
         /* 扑克牌样式 - 尺寸加大 */
         .poker-card {
-            width: 95px; height: 136px; /* Desktop Size */
-            background: white; border-radius: 10px;
-            box-shadow: 2px 4px 12px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.1);
-            display: flex; flex-direction: column; justify-content: space-between;
-            padding: 8px; position: relative;
+            width: 95px;
+            height: 136px;
+            /* Desktop Size */
+            background: white;
+            border-radius: 10px;
+            box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 8px;
+            position: relative;
             transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
-            font-family: sans-serif; font-weight: bold;
+            font-family: sans-serif;
+            font-weight: bold;
             z-index: 10;
         }
+
         @media (max-width: 380px) {
-            .poker-card { width: 75px; height: 108px; padding: 6px; } /* Mobile Size */
+            .poker-card {
+                width: 75px;
+                height: 108px;
+                padding: 6px;
+            }
+
+            /* Mobile Size */
         }
 
         .poker-back {
             background: repeating-linear-gradient(45deg, #b91c1c, #b91c1c 10px, #991b1b 10px, #991b1b 20px);
             border: 4px solid white;
         }
-        
+
         /* 进场动画 */
-        .card-enter { animation: flyIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0; }
+        .card-enter {
+            animation: flyIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0;
+        }
+
         @keyframes flyIn {
-            from { transform: translateY(-120px) scale(0.5) rotate(10deg); opacity: 0; }
-            to { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
+            from {
+                transform: translateY(-120px) scale(0.5) rotate(10deg);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0) scale(1) rotate(0);
+                opacity: 1;
+            }
         }
 
         /* 浮动文字动画 */
-        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-80px) scale(1.3); } }
-        .floating-text { position: absolute; font-weight: 900; font-family: 'Zcool KuaiLe', sans-serif; text-shadow: 0 2px 0px #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; white-space: nowrap; }
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-80px) scale(1.3);
+            }
+        }
+
+        .floating-text {
+            position: absolute;
+            font-weight: 900;
+            font-family: 'Zcool KuaiLe', sans-serif;
+            text-shadow: 0 2px 0px #000;
+            pointer-events: none;
+            animation: floatUp 1.5s ease-out forwards;
+            z-index: 100;
+            white-space: nowrap;
+        }
 
         /* 吉祥物动画 */
-        @keyframes bounce-mascot { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-        @keyframes heart-beat { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
-        .mascot-idle { animation: bounce-mascot 3s infinite ease-in-out; }
-        .mascot-shock { animation: bounce-mascot 0.2s infinite; }
-        .mascot-love { animation: heart-beat 0.5s infinite; }
-        .mascot-super { animation: heart-beat 0.3s infinite; box-shadow: 0 0 30px #fbbf24; border-color: #fbbf24 !important; }
-        
-        .speech-bubble { 
-            position: absolute; background: #fff; border-radius: 12px; padding: 6px 12px; 
-            font-size: 12px; color: #0f172a; top: -35px; left: 50%; transform: translateX(-50%); 
-            white-space: nowrap; box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
-            opacity: 0; transition: opacity 0.3s, transform 0.3s; 
-            pointer-events: none; font-weight: bold; z-index: 30;
+        @keyframes bounce-mascot {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-6px);
+            }
+        }
+
+        @keyframes heart-beat {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.3);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .mascot-idle {
+            animation: bounce-mascot 3s infinite ease-in-out;
+        }
+
+        .mascot-shock {
+            animation: bounce-mascot 0.2s infinite;
+        }
+
+        .mascot-love {
+            animation: heart-beat 0.5s infinite;
+        }
+
+        .mascot-super {
+            animation: heart-beat 0.3s infinite;
+            box-shadow: 0 0 30px #fbbf24;
+            border-color: #fbbf24 !important;
+        }
+
+        .speech-bubble {
+            position: absolute;
+            background: #fff;
+            border-radius: 12px;
+            padding: 6px 12px;
+            font-size: 12px;
+            color: #0f172a;
+            top: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+            font-weight: bold;
+            z-index: 30;
             border: 2px solid #8b5cf6;
         }
-        .speech-bubble::after { 
-            content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); 
-            border-width: 6px 6px 0; border-style: solid; border-color: #8b5cf6 transparent transparent transparent; 
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 6px 6px 0;
+            border-style: solid;
+            border-color: #8b5cf6 transparent transparent transparent;
         }
-        .show-bubble { opacity: 1; transform: translateX(-50%) translateY(-5px); }
+
+        .show-bubble {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-5px);
+        }
 
         /* 连胜火焰特效 */
         @keyframes fire-pulse {
-            0% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.5), 0 0 20px rgba(245, 158, 11, 0.5); border-color: #fca5a5; }
-            50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), 0 0 40px rgba(245, 158, 11, 0.8); border-color: #ef4444; }
-            100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.5), 0 0 20px rgba(245, 158, 11, 0.5); border-color: #fca5a5; }
+            0% {
+                box-shadow: 0 0 10px rgba(239, 68, 68, 0.5), 0 0 20px rgba(245, 158, 11, 0.5);
+                border-color: #fca5a5;
+            }
+
+            50% {
+                box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), 0 0 40px rgba(245, 158, 11, 0.8);
+                border-color: #ef4444;
+            }
+
+            100% {
+                box-shadow: 0 0 10px rgba(239, 68, 68, 0.5), 0 0 20px rgba(245, 158, 11, 0.5);
+                border-color: #fca5a5;
+            }
         }
+
         .streak-fire {
             animation: fire-pulse 1.5s infinite;
             position: relative;
         }
+
         .streak-fire::before {
-            content: '🔥'; position: absolute; top: -10px; right: -10px; font-size: 20px; z-index: 50;
+            content: '🔥';
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 20px;
+            z-index: 50;
             animation: bounce-mascot 1s infinite;
         }
 
         /* 超级投喂特效 - 雨落 */
-        @keyframes rain-fall { 
-            0% { transform: translateY(-100px) rotate(0deg); opacity: 1; } 
-            100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } 
+        @keyframes rain-fall {
+            0% {
+                transform: translateY(-100px) rotate(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(110vh) rotate(360deg);
+                opacity: 0;
+            }
         }
-        .rain-item { position: absolute; animation: rain-fall linear forwards; top: -50px; z-index: 90; }
+
+        .rain-item {
+            position: absolute;
+            animation: rain-fall linear forwards;
+            top: -50px;
+            z-index: 90;
+        }
 
         /* 结果浮层 */
-        .result-overlay { animation: popIn 0.3s ease-out; }
-        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .result-overlay {
+            animation: popIn 0.3s ease-out;
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
 
         .btn-action {
-            position: relative; overflow: hidden;
+            position: relative;
+            overflow: hidden;
         }
+
         .btn-action::after {
-            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-            background: linear-gradient(to bottom right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
-            transform: rotate(45deg) translateY(-100%); transition: transform 0.3s;
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(to bottom right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0) 100%);
+            transform: rotate(45deg) translateY(-100%);
+            transition: transform 0.3s;
         }
-        .btn-action:active::after { transform: rotate(45deg) translateY(0%); }
-        
+
+        .btn-action:active::after {
+            transform: rotate(45deg) translateY(0%);
+        }
+
         .active-hand-glow {
             box-shadow: 0 0 25px rgba(251, 191, 36, 0.3);
             border: 2px solid rgba(251, 191, 36, 0.6);
             background: rgba(255, 255, 255, 0.05);
         }
+
         .inactive-hand {
             opacity: 0.6;
             transform: scale(0.92);
             filter: grayscale(0.5);
         }
-        
+
         /* 边注区域高亮 */
-        .bet-zone { transition: all 0.2s; border: 1px solid rgba(255,255,255,0.1); }
-        .bet-zone:active { transform: scale(0.95); }
-        .bet-zone.has-bet { border-color: #fbbf24; background-color: rgba(251, 191, 36, 0.15); box-shadow: inset 0 0 15px rgba(251, 191, 36, 0.2); }
+        .bet-zone {
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .bet-zone:active {
+            transform: scale(0.95);
+        }
+
+        .bet-zone.has-bet {
+            border-color: #fbbf24;
+            background-color: rgba(251, 191, 36, 0.15);
+            box-shadow: inset 0 0 15px rgba(251, 191, 36, 0.2);
+        }
 
         /* 隐藏滚动条 */
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        .chat-scroll::-webkit-scrollbar { width: 0px; } 
-        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-pulse-gold { animation: pulseGold 2s infinite; }
-        @keyframes pulseGold { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .chat-scroll::-webkit-scrollbar {
+            width: 0px;
+        }
+
+        .animate-fade-in-up {
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-pulse-gold {
+            animation: pulseGold 2s infinite;
+        }
+
+        @keyframes pulseGold {
+            0% {
+                box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(234, 179, 8, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(234, 179, 8, 0);
+            }
+        }
 
         /* 头衔徽章特效 */
-        @keyframes shine-gold { 0% { background-position: -100px; } 100% { background-position: 200px; } }
-        .badge-shine {
-            position: relative; overflow: hidden;
+        @keyframes shine-gold {
+            0% {
+                background-position: -100px;
+            }
+
+            100% {
+                background-position: 200px;
+            }
         }
+
+        .badge-shine {
+            position: relative;
+            overflow: hidden;
+        }
+
         .badge-shine::after {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
             transform: skewX(-20deg);
             animation: shine-gold 3s infinite linear;
         }
 
         /* 战绩榜样式 */
-        .leader-item:nth-child(1) .rank-num { color: #fbbf24; text-shadow: 0 0 8px #fbbf24; }
-        .leader-item:nth-child(2) .rank-num { color: #e2e8f0; text-shadow: 0 0 8px #e2e8f0; }
-        .leader-item:nth-child(3) .rank-num { color: #f97316; text-shadow: 0 0 8px #f97316; }
-        .positive-score { color: #4ade80; text-shadow: 0 0 5px rgba(74, 222, 128, 0.3); }
-        .negative-score { color: #f87171; }
+        .leader-item:nth-child(1) .rank-num {
+            color: #fbbf24;
+            text-shadow: 0 0 8px #fbbf24;
+        }
+
+        .leader-item:nth-child(2) .rank-num {
+            color: #e2e8f0;
+            text-shadow: 0 0 8px #e2e8f0;
+        }
+
+        .leader-item:nth-child(3) .rank-num {
+            color: #f97316;
+            text-shadow: 0 0 8px #f97316;
+        }
+
+        .positive-score {
+            color: #4ade80;
+            text-shadow: 0 0 5px rgba(74, 222, 128, 0.3);
+        }
+
+        .negative-score {
+            color: #f87171;
+        }
     </style>
 
     <!-- 原版 Firebase Modular SDK -->
@@ -205,26 +469,27 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, updateDoc, addDoc, onSnapshot, serverTimestamp, runTransaction, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
+
         // 挂载到 window 供 Babel Script 使用
-        window.FB = { 
-            initializeApp, 
-            getAuth, 
-            signInAnonymously, 
-            onAuthStateChanged, 
-            getFirestore, 
-            collection, 
-            doc, 
-            setDoc, 
-            updateDoc, 
-            addDoc, 
-            onSnapshot, 
-            serverTimestamp, 
+        window.FB = {
+            initializeApp,
+            getAuth,
+            signInAnonymously,
+            onAuthStateChanged,
+            getFirestore,
+            collection,
+            doc,
+            setDoc,
+            updateDoc,
+            addDoc,
+            onSnapshot,
+            serverTimestamp,
             runTransaction,
-            getDoc 
+            getDoc
         };
     </script>
 </head>
+
 <body>
     <div id="root"></div>
     <script type="text/babel">
@@ -249,8 +514,8 @@
             playTone: (freq, type, duration, vol = 0.1) => {
                 AudioSynth.init(); const osc = AudioSynth.ctx.createOscillator(); const gain = AudioSynth.ctx.createGain();
                 osc.type = type; osc.frequency.value = freq; osc.connect(gain); gain.connect(AudioSynth.ctx.destination);
-                osc.start(); gain.gain.setValueAtTime(vol, AudioSynth.ctx.currentTime); 
-                gain.gain.exponentialRampToValueAtTime(0.001, AudioSynth.ctx.currentTime + duration); 
+                osc.start(); gain.gain.setValueAtTime(vol, AudioSynth.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, AudioSynth.ctx.currentTime + duration);
                 osc.stop(AudioSynth.ctx.currentTime + duration);
             },
             playFlip: () => { AudioSynth.playTone(400, 'triangle', 0.1, 0.05); },
@@ -260,14 +525,14 @@
             playBust: () => { AudioSynth.playTone(150, 'sawtooth', 0.4, 0.1); },
             playSplit: () => { AudioSynth.playTone(1000, 'square', 0.1, 0.05); AudioSynth.playTone(1500, 'square', 0.1, 0.05); },
             playJackpot: () => { [1000, 1200, 1500, 2000, 2500].forEach((f, i) => setTimeout(() => AudioSynth.playTone(f, 'square', 0.15), i * 60)); },
-            playMeow: () => { 
+            playMeow: () => {
                 AudioSynth.init(); const osc = AudioSynth.ctx.createOscillator(); const gain = AudioSynth.ctx.createGain();
-                osc.type = 'triangle'; osc.frequency.setValueAtTime(900, AudioSynth.ctx.currentTime); osc.frequency.linearRampToValueAtTime(1300, AudioSynth.ctx.currentTime+0.15); osc.frequency.linearRampToValueAtTime(700, AudioSynth.ctx.currentTime+0.3);
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(900, AudioSynth.ctx.currentTime); osc.frequency.linearRampToValueAtTime(1300, AudioSynth.ctx.currentTime + 0.15); osc.frequency.linearRampToValueAtTime(700, AudioSynth.ctx.currentTime + 0.3);
                 osc.connect(gain); gain.connect(AudioSynth.ctx.destination); osc.start(); gain.gain.exponentialRampToValueAtTime(0.001, AudioSynth.ctx.currentTime + 0.3); osc.stop(AudioSynth.ctx.currentTime + 0.3);
             },
             playKiss: () => {
                 AudioSynth.init(); const osc = AudioSynth.ctx.createOscillator(); const gain = AudioSynth.ctx.createGain();
-                osc.type = 'sine'; osc.frequency.setValueAtTime(1200, AudioSynth.ctx.currentTime); 
+                osc.type = 'sine'; osc.frequency.setValueAtTime(1200, AudioSynth.ctx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(600, AudioSynth.ctx.currentTime + 0.1);
                 gain.gain.setValueAtTime(0.1, AudioSynth.ctx.currentTime);
                 gain.gain.linearRampToValueAtTime(0, AudioSynth.ctx.currentTime + 0.1);
@@ -290,7 +555,7 @@
                 if (!user || !db) return;
                 const q = window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
                 const unsubscribe = window.FB.onSnapshot(q, (snapshot) => {
-                    const msgs = []; 
+                    const msgs = [];
                     snapshot.forEach((doc) => msgs.push({ id: doc.id, ...doc.data() }));
                     msgs.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
                     setMessages(msgs.slice(-50));
@@ -311,21 +576,21 @@
                 return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             };
 
-            const saveNickname = () => { 
-                if(tempName.trim()) { 
-                    setNickname(tempName.trim()); 
-                    localStorage.setItem('dice_game_nickname', tempName.trim()); 
+            const saveNickname = () => {
+                if (tempName.trim()) {
+                    setNickname(tempName.trim());
+                    localStorage.setItem('dice_game_nickname', tempName.trim());
                 }
                 if (tempAvatar.trim()) {
                     setAvatar(tempAvatar.trim());
                     localStorage.setItem('dice_game_avatar', tempAvatar.trim());
                 }
-                setIsEditingName(false); 
+                setIsEditingName(false);
             };
 
             const sendMessage = async (textToSend) => {
                 const msg = textToSend || inputText.trim();
-                
+
                 if (!user) {
                     alert("正在连接服务器...请稍候再试。\n(如果长时间未连接，请检查网络)");
                     return;
@@ -333,19 +598,19 @@
                 if (!msg) return;
 
                 // Optimistic clear (立刻清空)
-                if(!textToSend) setInputText("");
+                if (!textToSend) setInputText("");
 
-                const displayName = `${avatar || ''} ${nickname || `User ${user.uid.slice(0,3)}`}`.trim();
-                try { 
-                    await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages'), { 
-                        text: msg, 
-                        senderId: user.uid.slice(0, 5), 
-                        senderName: displayName, 
-                        senderBalance: balance, 
-                        isSystem: false, 
-                        createdAt: window.FB.serverTimestamp() 
-                    }); 
-                } catch (err) { 
+                const displayName = `${avatar || ''} ${nickname || `User ${user.uid.slice(0, 3)}`}`.trim();
+                try {
+                    await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages'), {
+                        text: msg,
+                        senderId: user.uid.slice(0, 5),
+                        senderName: displayName,
+                        senderBalance: balance,
+                        isSystem: false,
+                        createdAt: window.FB.serverTimestamp()
+                    });
+                } catch (err) {
                     console.error(err);
                     alert("发送失败: " + err.message + "\n可能是网络不稳定。");
                 }
@@ -363,17 +628,17 @@
                             </div>
                             {isEditingName ? (
                                 <div className="absolute inset-0 z-20 bg-slate-900/95 flex flex-col items-center justify-center p-4 space-y-3">
-                                    <input type="text" value={tempName} onChange={(e)=>setTempName(e.target.value)} placeholder="请输入昵称" className="w-full bg-white/10 border border-indigo-400 rounded-full px-4 py-2 text-white text-center text-sm" />
-                                    <input type="text" value={tempAvatar} onChange={(e)=>setTempAvatar(e.target.value)} placeholder="头像 emoji，如 🐱" className="w-full bg-white/10 border border-indigo-400 rounded-full px-4 py-2 text-white text-center text-sm" />
+                                    <input type="text" value={tempName} onChange={(e) => setTempName(e.target.value)} placeholder="请输入昵称" className="w-full bg-white/10 border border-indigo-400 rounded-full px-4 py-2 text-white text-center text-sm" />
+                                    <input type="text" value={tempAvatar} onChange={(e) => setTempAvatar(e.target.value)} placeholder="头像 emoji，如 🐱" className="w-full bg-white/10 border border-indigo-400 rounded-full px-4 py-2 text-white text-center text-sm" />
                                     <div className="flex gap-2 text-xl">
-                                        {['🐱','🐯','🐶','🐼','🐻','🐵'].map(em => (
-                                            <button key={em} type="button" onClick={()=>setTempAvatar(em)} className={`w-8 h-8 flex items-center justify-center rounded-full ${tempAvatar===em?'bg-indigo-500':'bg-white/10'}`}>{em}</button>
+                                        {['🐱', '🐯', '🐶', '🐼', '🐻', '🐵'].map(em => (
+                                            <button key={em} type="button" onClick={() => setTempAvatar(em)} className={`w-8 h-8 flex items-center justify-center rounded-full ${tempAvatar === em ? 'bg-indigo-500' : 'bg-white/10'}`}>{em}</button>
                                         ))}
                                     </div>
                                     <button onClick={saveNickname} className="mt-1 bg-indigo-500 text-white px-6 py-2 rounded-full font-bold text-sm">进入</button>
                                 </div>
                             ) : (
-                                <div className="bg-indigo-900/30 px-3 py-1 text-[10px] text-indigo-200 flex justify-between items-center cursor-pointer border-b border-white/5" onClick={()=>setIsEditingName(true)}>
+                                <div className="bg-indigo-900/30 px-3 py-1 text-[10px] text-indigo-200 flex justify-between items-center cursor-pointer border-b border-white/5" onClick={() => setIsEditingName(true)}>
                                     <span className="flex items-center gap-1">
                                         <span>{avatar}</span>
                                         <span>{nickname}</span>
@@ -403,9 +668,9 @@
                                 })}
                                 <div ref={messagesEndRef} />
                             </div>
-                            <div className="px-2 py-1 flex gap-2 overflow-x-auto hide-scrollbar bg-white/5">{quickEmojis.map(e => <button key={e} onClick={()=>sendMessage(e)} className="flex-shrink-0 bg-white/10 hover:bg-white/20 px-2 py-1 rounded-full text-[10px] text-white">{e}</button>)}</div>
-                            <form onSubmit={(e)=>{e.preventDefault(); sendMessage();}} className="p-2 bg-slate-800/50 border-t border-white/5 flex gap-2">
-                                <input type="text" value={inputText} onChange={(e)=>setInputText(e.target.value)} disabled={!user} className="flex-1 bg-slate-900/50 border border-white/10 rounded-full px-3 py-1.5 text-xs text-white" placeholder={user ? "说点什么..." : "连接中..."} />
+                            <div className="px-2 py-1 flex gap-2 overflow-x-auto hide-scrollbar bg-white/5">{quickEmojis.map(e => <button key={e} onClick={() => sendMessage(e)} className="flex-shrink-0 bg-white/10 hover:bg-white/20 px-2 py-1 rounded-full text-[10px] text-white">{e}</button>)}</div>
+                            <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="p-2 bg-slate-800/50 border-t border-white/5 flex gap-2">
+                                <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} disabled={!user} className="flex-1 bg-slate-900/50 border border-white/10 rounded-full px-3 py-1.5 text-xs text-white" placeholder={user ? "说点什么..." : "连接中..."} />
                                 <button type="submit" disabled={isEditingName || !user} className={`text-white p-1.5 rounded-full flex items-center justify-center w-8 h-8 ${!user ? 'bg-slate-600' : 'bg-indigo-500'}`}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                                 </button>
@@ -413,7 +678,7 @@
                         </div>
                     )}
                     <button onClick={() => setIsOpen(!isOpen)} className="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg border-2 border-indigo-400 overflow-hidden relative active:scale-90 transition-transform">
-                        {isOpen ? <span className="text-xl font-bold">✕</span> : <img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/724/724715.png'}} />}
+                        {isOpen ? <span className="text-xl font-bold">✕</span> : <img src="1.jpg" className="w-full h-full object-cover" onError={(e) => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/724/724715.png' }} />}
                     </button>
                 </div>
             );
@@ -421,19 +686,19 @@
 
         // --- 超级投喂特效 ---
         const SuperFeedEffect = () => {
-            const drops = Array.from({length: 30}).map((_,i) => ({
+            const drops = Array.from({ length: 30 }).map((_, i) => ({
                 left: Math.random() * 100 + '%',
                 delay: Math.random() * 2 + 's',
                 duration: Math.random() * 1.5 + 1.5 + 's',
-                icon: Math.random() > 0.6 ? '🐟' : (Math.random()>0.5 ? '💖' : '💰'),
+                icon: Math.random() > 0.6 ? '🐟' : (Math.random() > 0.5 ? '💖' : '💰'),
                 size: Math.random() * 1.5 + 1 + 'rem'
             }));
-            
+
             return (
                 <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
                     <div className="absolute inset-0 bg-yellow-500/20 animate-pulse"></div>
                     {drops.map((d, i) => (
-                        <div key={i} className="rain-item" style={{left: d.left, animationDelay: d.delay, animationDuration: d.duration, fontSize: d.size}}>
+                        <div key={i} className="rain-item" style={{ left: d.left, animationDelay: d.delay, animationDuration: d.duration, fontSize: d.size }}>
                             {d.icon}
                         </div>
                     ))}
@@ -451,7 +716,7 @@
         const MascotDealer = ({ gameState, resultType, splitWinCount, onFeed, feedAnim, feedCount, showSuperFeed }) => {
             const [msg, setMsg] = useState("");
             const [anim, setAnim] = useState("mascot-idle");
-            
+
             useEffect(() => {
                 if (showSuperFeed) { setAnim("mascot-super"); setMsg("喵喵喵！爆米啦！"); return; }
                 if (feedAnim) { setAnim("mascot-love"); setMsg("老板大气! 爱你喵~"); return; }
@@ -479,7 +744,7 @@
                 <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 z-[40] flex flex-col items-center">
                     <div className="relative cursor-pointer" onClick={poke}>
                         <div className={`relative w-24 h-24 ${anim}`}>
-                            <img src="1.jpg" className="w-full h-full rounded-full border-4 border-indigo-400 shadow-lg object-cover bg-white" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
+                            <img src="1.jpg" className="w-full h-full rounded-full border-4 border-indigo-400 shadow-lg object-cover bg-white" onError={(e) => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/616/616430.png' }} />
                         </div>
                         {/* 投喂按钮 */}
                         <button onClick={onFeed} className="absolute -bottom-2 -right-2 w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-white shadow-lg active:scale-90 transition-transform z-10 overflow-visible">
@@ -511,7 +776,7 @@
                         }
                     });
                     data.sort((a, b) => b.profit - a.profit);
-                    setLeaders(data.slice(0, 20)); 
+                    setLeaders(data.slice(0, 20));
                 });
                 return () => unsubscribe();
             }, [db, appId]);
@@ -528,31 +793,46 @@
                             {leaders.map((player, index) => {
                                 const rank = getRankConfig(player.balance);
                                 return (
-                                <div key={index} className="leader-item flex justify-between items-center bg-slate-800/60 p-3 rounded-lg border border-white/5">
-                                    <div className="flex items-center gap-3">
-                                        <span className={`rank-num font-bold w-6 text-center ${index===0?'text-yellow-400':index===1?'text-gray-300':index===2?'text-orange-400':'text-white/40'}`}>
-                                            {index + 1}
+                                    <div key={index} className="leader-item flex justify-between items-center bg-slate-800/60 p-3 rounded-lg border border-white/5">
+                                        <div className="flex items-center gap-3">
+                                            <span className={`rank-num font-bold w-6 text-center ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-orange-400' : 'text-white/40'}`}>
+                                                {index + 1}
+                                            </span>
+                                            <div className="w-8 h-8 rounded-full bg-indigo-900 overflow-hidden border border-white/10">
+                                                <img src="1.jpg" className="w-full h-full object-cover opacity-80" onError={(e) => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/616/616430.png' }} />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-xs text-indigo-100">{player.nickname || '神秘人'}</span>
+                                                <span className={`text-[9px] px-1 rounded border self-start ${rank.color}`}>{rank.title}</span>
+                                            </div>
+                                        </div>
+                                        <span className={`font-mono text-sm font-bold ${player.profit >= 0 ? 'positive-score' : 'negative-score'}`}>
+                                            {player.profit >= 0 ? '+' : ''}{player.profit?.toLocaleString()}
                                         </span>
-                                        <div className="w-8 h-8 rounded-full bg-indigo-900 overflow-hidden border border-white/10">
-                                            <img src="1.jpg" className="w-full h-full object-cover opacity-80" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-xs text-indigo-100">{player.nickname || '神秘人'}</span>
-                                            <span className={`text-[9px] px-1 rounded border self-start ${rank.color}`}>{rank.title}</span>
-                                        </div>
                                     </div>
-                                    <span className={`font-mono text-sm font-bold ${player.profit >= 0 ? 'positive-score' : 'negative-score'}`}>
-                                        {player.profit >= 0 ? '+' : ''}{player.profit?.toLocaleString()}
-                                    </span>
-                                </div>
-                            )})}
+                                )
+                            })}
                         </div>
                     </div>
                 </div>
             );
         };
 
+        // --- 每日奖励弹窗 ---
+        const DailyBonusModal = ({ amount, onClose }) => (
+            <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur flex items-center justify-center p-6 animate-fade-in-up">
+                <div className="bg-indigo-900 border-2 border-yellow-400 p-6 rounded-3xl text-center shadow-[0_0_50px_rgba(234,179,8,0.5)] w-full max-w-xs relative overflow-hidden">
+                    <div className="text-6xl mb-4">🎁</div>
+                    <h3 className="text-2xl font-cute text-yellow-300 mb-2">每日登录奖励</h3>
+                    <p className="text-indigo-200 text-sm mb-6">欢迎回来!送您一笔启动资金~</p>
+                    <div className="text-3xl font-mono font-bold text-white mb-6">+${amount.toLocaleString()}</div>
+                    <button onClick={onClose} className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-xl text-white font-bold text-lg shadow-lg">开心收下</button>
+                </div>
+            </div>
+        );
+
         // --- 扑克逻辑 ---
+
         const SUITS = ['♠', '♥', '♣', '♦'];
         const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
@@ -586,19 +866,19 @@
         // --- 组件: 扑克牌 ---
         const Card = ({ card, hidden, index, total }) => {
             const isRed = card.suit === '♥' || card.suit === '♦';
-            const offsetX = index * 25; 
+            const offsetX = index * 25;
             const rotate = (index - (total - 1) / 2) * 3;
 
             if (hidden) {
                 return (
-                    <div className="absolute poker-card poker-back card-enter" 
-                         style={{ left: `${offsetX}px`, zIndex: index, animationDelay: `${index * 0.1}s` }}>
+                    <div className="absolute poker-card poker-back card-enter"
+                        style={{ left: `${offsetX}px`, zIndex: index, animationDelay: `${index * 0.1}s` }}>
                     </div>
                 );
             }
             return (
-                <div className={`absolute poker-card card-enter ${isRed ? 'text-red-600' : 'text-slate-900'}`} 
-                     style={{ left: `${offsetX}px`, zIndex: index, animationDelay: `${index * 0.1}s`, transform: `rotate(${rotate}deg)` }}>
+                <div className={`absolute poker-card card-enter ${isRed ? 'text-red-600' : 'text-slate-900'}`}
+                    style={{ left: `${offsetX}px`, zIndex: index, animationDelay: `${index * 0.1}s`, transform: `rotate(${rotate}deg)` }}>
                     <div className="text-xl leading-none font-bold">{card.value}</div>
                     <div className="text-4xl absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">{card.suit}</div>
                     <div className="text-xl leading-none self-end rotate-180 font-bold">{card.value}</div>
@@ -608,25 +888,25 @@
 
         // --- 边注计算逻辑 ---
         const getPairsWin = (card1, card2, bet) => {
-             if (card1.value !== card2.value) return 0;
-             // 混合对子 (6:1)
-             if (card1.suit !== card2.suit && (['♥','♦'].includes(card1.suit) !== ['♥','♦'].includes(card2.suit))) return bet * 6;
-             // 同色对子 (12:1)
-             if (card1.suit !== card2.suit) return bet * 12;
-             // 完美对子 (25:1)
-             return bet * 25;
+            if (card1.value !== card2.value) return 0;
+            // 混合对子 (6:1)
+            if (card1.suit !== card2.suit && (['♥', '♦'].includes(card1.suit) !== ['♥', '♦'].includes(card2.suit))) return bet * 6;
+            // 同色对子 (12:1)
+            if (card1.suit !== card2.suit) return bet * 12;
+            // 完美对子 (25:1)
+            return bet * 25;
         };
 
         const getPoker3Win = (card1, card2, dealerCard, bet) => {
-            const cards = [card1, card2, dealerCard].sort((a,b) => a.weight - b.weight);
+            const cards = [card1, card2, dealerCard].sort((a, b) => a.weight - b.weight);
             const suits = cards.map(c => c.suit);
-            const values = cards.map(c => c.weight); 
+            const values = cards.map(c => c.weight);
             const ranks = cards.map(c => VALUES.indexOf(c.value)); // 0-12
-            ranks.sort((a,b)=>a-b);
-            
+            ranks.sort((a, b) => a - b);
+
             const isFlush = suits[0] === suits[1] && suits[1] === suits[2];
-            const isStraight = (ranks[1] === ranks[0] + 1 && ranks[2] === ranks[1] + 1) || (ranks[0]===0 && ranks[1]===9 && ranks[2]===10) || (ranks[0]===0 && ranks[1]===1 && ranks[2]===12); 
-            
+            const isStraight = (ranks[1] === ranks[0] + 1 && ranks[2] === ranks[1] + 1) || (ranks[0] === 0 && ranks[1] === 9 && ranks[2] === 10) || (ranks[0] === 0 && ranks[1] === 1 && ranks[2] === 12);
+
             const isTrips = ranks[0] === ranks[1] && ranks[1] === ranks[2];
 
             if (isFlush && isStraight) return bet * 40; // 同花顺
@@ -640,9 +920,10 @@
         // --- 主程序 ---
         const App = () => {
             const [balance, setBalance] = useState(0);
+            const [initialBalance, setInitialBalance] = useState(0);
             const [user, setUser] = useState(null);
             const [deck, setDeck] = useState([]);
-            
+
             // Hands: Array of { cards: [], bet: number, status: 'playing'|'stand'|'bust'|'blackjack'|'double'|'dragon' }
             const [playerHands, setPlayerHands] = useState([]);
             const [activeHandIndex, setActiveHandIndex] = useState(0);
@@ -650,7 +931,7 @@
             const [dealerHand, setDealerHand] = useState([]);
             const [gameState, setGameState] = useState('betting'); // betting, playing, dealerTurn, result, insurance
             const [resultType, setResultType] = useState(null);
-            
+
             // Bets
             const [bet, setBet] = useState(0); // Main Bet
             const [sideBets, setSideBets] = useState({ pairs: 0, poker3: 0 }); // Side Bets
@@ -659,14 +940,15 @@
             const [resultMessage, setResultMessage] = useState("");
             const [resultAmount, setResultAmount] = useState(0);
             const [floatingTexts, setFloatingTexts] = useState([]);
-            
+
             const [nickname, setNickname] = useState('');
             const [showRelief, setShowRelief] = useState(false);
-            const [splitWinCount, setSplitWinCount] = useState(undefined); 
-            
+            const [showDailyBonus, setShowDailyBonus] = useState(false);
+            const [splitWinCount, setSplitWinCount] = useState(undefined);
+
             // Insurance State
             const [insuranceBet, setInsuranceBet] = useState(0);
-            
+
             // New Features State
             const [streak, setStreak] = useState(0);
             const [feedAnim, setFeedAnim] = useState(false);
@@ -677,10 +959,15 @@
             const dbRef = useRef(null);
             const appIdRef = useRef('default-app-id');
 
-            // 0. 加载本地昵称
-            useEffect(() => { 
-                const savedName = localStorage.getItem('dice_game_nickname'); 
-                if (savedName) setNickname(savedName); 
+            // 0. 加载本地昵称和初始余额
+            useEffect(() => {
+                const savedName = localStorage.getItem('dice_game_nickname');
+                if (savedName) setNickname(savedName);
+
+                // 读取今日初始余额
+                const todayKey = `blackjack_start_${new Date().toDateString()}`;
+                const savedStart = localStorage.getItem(todayKey);
+                if (savedStart) setInitialBalance(parseInt(savedStart));
             }, []);
 
             // 1. Firebase 初始化
@@ -694,18 +981,18 @@
                         const auth = window.FB.getAuth(app);
                         dbRef.current = window.FB.getFirestore(app);
                         await window.FB.signInAnonymously(auth);
-                        window.FB.onAuthStateChanged(auth, (u) => { 
-                            if (u) { 
-                                setUser(u); 
-                                setFirebaseReady(true); 
-                            } 
+                        window.FB.onAuthStateChanged(auth, (u) => {
+                            if (u) {
+                                setUser(u);
+                                setFirebaseReady(true);
+                            }
                         });
                     } catch (e) { console.error(e); }
                 };
                 initFirebase();
             }, []);
 
-            // 2. 同步余额 & 救济金检测
+            // 2. 同步余额 & 救济金检测 & 每日奖励
             useEffect(() => {
                 if (!user || !dbRef.current) return;
                 const docRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'users', user.uid, 'data', 'account');
@@ -714,41 +1001,89 @@
                     if (doc.exists()) {
                         const data = doc.data();
                         setBalance(data.balance || 0);
+
+                        // 如果这是新的一天第一次加载数据,设置初始余额
+                        const todayKey = `blackjack_start_${new Date().toDateString()}`;
+                        if (!localStorage.getItem(todayKey)) {
+                            setInitialBalance(data.balance || 0);
+                            localStorage.setItem(todayKey, (data.balance || 0).toString());
+                        }
+
                         if (data.balance < 100 && bet === 0 && sideBets.pairs === 0 && sideBets.poker3 === 0 && gameState === 'betting') {
                             setTimeout(() => setShowRelief(true), 1000);
                         }
                     } else {
-                        window.FB.setDoc(docRef, { balance: 10000 }, { merge: true });
+                        window.FB.setDoc(docRef, { balance: 10000, lastBonusDate: new Date().toDateString() }, { merge: true });
                         setBalance(10000);
+                        setInitialBalance(10000);
                     }
                 });
+
+                // 检查每日奖励
+                const checkDailyBonus = async () => {
+                    if (!dbRef.current) return;
+                    try {
+                        const bonusGiven = await window.FB.runTransaction(dbRef.current, async (transaction) => {
+                            const sfDoc = await transaction.get(docRef);
+                            if (!sfDoc.exists()) return false;
+
+                            const data = sfDoc.data();
+                            const today = new Date().toDateString();
+
+                            if (data.lastBonusDate !== today) {
+                                const newBalance = (data.balance || 0) + 10000;
+                                transaction.update(docRef, { balance: newBalance, lastBonusDate: today });
+
+                                // 更新今日初始余额为发完低保后的余额
+                                const todayKey = `blackjack_start_${today}`;
+                                localStorage.setItem(todayKey, newBalance.toString());
+                                return true;
+                            }
+                            return false;
+                        });
+                        if (bonusGiven) {
+                            setShowDailyBonus(true);
+                            AudioSynth.playWin();
+                            // 重新读取最新余额作为初始余额
+                            const snap = await window.FB.getDoc(docRef);
+                            if (snap.exists()) setInitialBalance(snap.data().balance);
+                        }
+                    } catch (e) { console.error('Daily bonus error:', e); }
+                };
+
+                setTimeout(checkDailyBonus, 1000);
                 return () => unsubscribe();
             }, [user, gameState, bet, sideBets]);
+
 
             const updateBalance = async (newBalance) => {
                 if (!user || !dbRef.current) return;
                 const docRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'users', user.uid, 'data', 'account');
                 await window.FB.updateDoc(docRef, { balance: newBalance });
+
+                // 更新公共战绩榜 (带 profit)
+                const currentProfit = newBalance - initialBalance;
                 const leaderRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'leaderboard', user.uid);
-                window.FB.setDoc(leaderRef, { 
-                    balance: newBalance, 
-                    nickname: nickname || `User ${user.uid.slice(0,3)}`,
+                window.FB.setDoc(leaderRef, {
+                    balance: newBalance,
+                    profit: currentProfit,
+                    nickname: nickname || `User ${user.uid.slice(0, 3)}`,
                     updatedAt: window.FB.serverTimestamp()
                 }, { merge: true });
             };
 
-            const handleRelief = () => { 
-                AudioSynth.playWin(); 
-                const newBalance = balance + 2000; 
-                setBalance(newBalance); 
-                updateBalance(newBalance); 
-                setShowRelief(false); 
+            const handleRelief = () => {
+                AudioSynth.playWin();
+                const newBalance = balance + 2000;
+                setBalance(newBalance);
+                updateBalance(newBalance);
+                setShowRelief(false);
             };
 
             const handleFeedMascot = () => {
                 if (balance < 50) return;
                 updateBalance(balance - 50);
-                
+
                 const newCount = feedCount + 1;
                 setFeedCount(newCount);
 
@@ -757,10 +1092,10 @@
                     setFeedCount(0);
                     setShowSuperFeed(true);
                     AudioSynth.playJackpot();
-                    
+
                     // Broadcast
                     if (user) {
-                         try { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `🔥 ${nickname || '老板'} 触发了猫神降临！全场膜拜！`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); } catch(e) {}
+                        try { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `🔥 ${nickname || '老板'} 触发了猫神降临！全场膜拜！`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); } catch (e) { }
                     }
 
                     setTimeout(() => setShowSuperFeed(false), 5000);
@@ -770,7 +1105,7 @@
                     setTimeout(() => setFeedAnim(false), 2000);
                     // Chance for chat msg
                     if (Math.random() > 0.7 && user) {
-                         try { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `${nickname || '老板'} 给猫猫买了小鱼干!`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); } catch(e) {}
+                        try { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `${nickname || '老板'} 给猫猫买了小鱼干!`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); } catch (e) { }
                     }
                 }
             };
@@ -780,13 +1115,13 @@
             const addToBet = (amount) => {
                 if (balance < amount) { AudioSynth.playBust(); return; }
                 AudioSynth.playChip();
-                
+
                 if (selectedBetType === 'main') {
                     setBet(prev => prev + amount);
                 } else if (selectedBetType === 'pairs') {
-                    setSideBets(prev => ({...prev, pairs: prev.pairs + amount}));
+                    setSideBets(prev => ({ ...prev, pairs: prev.pairs + amount }));
                 } else if (selectedBetType === 'poker3') {
-                    setSideBets(prev => ({...prev, poker3: prev.poker3 + amount}));
+                    setSideBets(prev => ({ ...prev, poker3: prev.poker3 + amount }));
                 }
                 updateBalance(balance - amount);
             };
@@ -818,7 +1153,7 @@
                 // 立即结算边注 (Side Bets)
                 let sideWinTotal = 0;
                 const newTexts = [];
-                
+
                 // 完美对子
                 if (sideBets.pairs > 0) {
                     const win = getPairsWin(initialPlayerHand[0], initialPlayerHand[1], sideBets.pairs);
@@ -850,7 +1185,7 @@
                     setGameState('playing');
                     // 检查天胡 (仅当没有保险时直接检查，如果有保险等保险流程完)
                     if (calculateScore(initialPlayerHand) === 21) {
-                         setTimeout(() => handleGameOver([{ cards: initialPlayerHand, bet: bet, status: 'blackjack' }], initialDealerHand, true), 1000);
+                        setTimeout(() => handleGameOver([{ cards: initialPlayerHand, bet: bet, status: 'blackjack' }], initialDealerHand, true), 1000);
                     }
                 }
             };
@@ -863,7 +1198,7 @@
                     setInsuranceBet(cost);
                     AudioSynth.playChip();
                 }
-                
+
                 setGameState('playing');
                 if (calculateScore(dealerHand) === 21) {
                     setTimeout(() => handleGameOver(playerHands, dealerHand, false, true), 500); // Trigger game over
@@ -878,7 +1213,7 @@
             };
 
             const splitPair = () => {
-                if (playerHands.length !== 1) return; 
+                if (playerHands.length !== 1) return;
                 if (balance < bet) { AudioSynth.playBust(); alert("余额不足以分牌"); return; }
                 updateBalance(balance - bet);
                 AudioSynth.playSplit();
@@ -896,24 +1231,24 @@
                 const hand2 = { cards: [card2, newCard2], bet: bet, status: 'playing' };
 
                 setPlayerHands([hand1, hand2]);
-                setActiveHandIndex(0); 
+                setActiveHandIndex(0);
             };
 
             const doubleDown = () => {
                 const currentHand = playerHands[activeHandIndex];
                 if (currentHand.cards.length !== 2) return;
                 if (balance < currentHand.bet) { AudioSynth.playBust(); alert("余额不足加倍"); return; }
-                
+
                 updateBalance(balance - currentHand.bet);
                 AudioSynth.playChip();
 
                 const newDeck = [...deck];
                 const card = newDeck.pop();
                 setDeck(newDeck);
-                
+
                 setPlayerHands(prev => {
                     const newHands = [...prev];
-                    const active = {...newHands[activeHandIndex]};
+                    const active = { ...newHands[activeHandIndex] };
                     active.bet = active.bet * 2;
                     active.cards = [...active.cards, card];
                     // Double down usually forces stand (unless bust)
@@ -924,28 +1259,28 @@
                     } else {
                         // 5-Card Charlie Check (Win immediately if 5 cards and <= 21)
                         if (active.cards.length >= 5 && score <= 21) {
-                             active.status = 'dragon';
+                            active.status = 'dragon';
                         } else {
-                             active.status = 'stand';
+                            active.status = 'stand';
                         }
                     }
                     newHands[activeHandIndex] = active;
                     return newHands;
                 });
-                
-                setTimeout(() => checkNextHand(playerHands), 600); 
+
+                setTimeout(() => checkNextHand(playerHands), 600);
             };
-            
+
             useEffect(() => {
                 if (gameState === 'playing' && playerHands.length > 0) {
                     const currentHand = playerHands[activeHandIndex];
                     if (currentHand && (currentHand.status !== 'playing')) {
                         if (activeHandIndex < playerHands.length - 1) {
-                             setTimeout(() => setActiveHandIndex(prev => prev + 1), 500);
+                            setTimeout(() => setActiveHandIndex(prev => prev + 1), 500);
                         } else {
-                             if (playerHands.every(h => h.status !== 'playing')) {
-                                 setTimeout(() => playDealerTurn(playerHands), 500);
-                             }
+                            if (playerHands.every(h => h.status !== 'playing')) {
+                                setTimeout(() => playDealerTurn(playerHands), 500);
+                            }
                         }
                     }
                 }
@@ -963,7 +1298,7 @@
                     const activeHand = { ...newHands[activeHandIndex] };
                     activeHand.cards = [...activeHand.cards, card];
                     const score = calculateScore(activeHand.cards);
-                    
+
                     if (score > 21) {
                         activeHand.status = 'bust';
                         AudioSynth.playBust();
@@ -990,7 +1325,7 @@
 
             const playDealerTurn = async (finalPlayerHands) => {
                 // If everyone busted or has 5-Card Charlie (auto win), Dealer doesn't need to play normally
-                
+
                 const needDealerPlay = finalPlayerHands.some(h => h.status === 'stand');
 
                 if (!needDealerPlay) {
@@ -1001,11 +1336,11 @@
                 setGameState('dealerTurn');
                 let currentDeck = [...deck];
                 let currentDHand = [...dealerHand];
-                
+
                 while (calculateScore(currentDHand) < 17) {
                     await new Promise(r => setTimeout(r, 800));
                     currentDHand.push(currentDeck.pop());
-                    setDealerHand([...currentDHand]); 
+                    setDealerHand([...currentDHand]);
                     setDeck(currentDeck);
                     AudioSynth.playFlip();
                 }
@@ -1035,11 +1370,11 @@
                     if (hand.status === 'bust') {
                         // Lost
                     } else if (hand.status === 'dragon') {
-                        handWin = hand.bet * 3; 
+                        handWin = hand.bet * 3;
                         winCount++;
                     } else if (dealerHasBlackjack) {
                         if (hand.status === 'blackjack' || (isInstantBJ)) {
-                             handWin = hand.bet; // Push
+                            handWin = hand.bet; // Push
                         }
                     } else if (isInstantBJ && hand.status === 'blackjack') {
                         handWin = Math.floor(hand.bet + hand.bet * 1.5);
@@ -1049,7 +1384,7 @@
                     } else if (pScore > dScore) {
                         handWin = hand.bet * 2; winCount++;
                     } else if (pScore === dScore) {
-                        handWin = hand.bet; 
+                        handWin = hand.bet;
                     }
                     totalWin += handWin;
                 });
@@ -1061,18 +1396,18 @@
                 // Summary and Streak Logic
                 if (dealerHasBlackjack) {
                     resultSummary = "庄家 Blackjack!"; summaryType = "lose";
-                    if (totalWin > 0) { resultSummary += " (保险保本)"; summaryType="push"; }
+                    if (totalWin > 0) { resultSummary += " (保险保本)"; summaryType = "push"; }
                 } else if (pHands.length === 1) {
                     if (pHands[0].status === 'dragon') { resultSummary = "五龙护体! 赢!"; summaryType = "dragon"; }
                     else if (totalWin > pHands[0].bet) { resultSummary = "你赢了！"; summaryType = "win"; }
                     else if (totalWin === pHands[0].bet) { resultSummary = "平局 (Push)"; summaryType = "push"; }
                     else { resultSummary = "庄家胜"; summaryType = "lose"; }
-                    
+
                     if (pHands[0].status === 'bust') { resultSummary = "爆牌！你输了"; summaryType = "bust"; }
                     if (isInstantBJ) { resultSummary = "Blackjack!"; summaryType = "bj"; }
                 } else {
                     if (winCount === 2) { resultSummary = "全胜！Double Win!"; summaryType = "win"; }
-                    else if (totalWin > (bet * 2)) { resultSummary = "赢了！"; summaryType = "win"; } 
+                    else if (totalWin > (bet * 2)) { resultSummary = "赢了！"; summaryType = "win"; }
                     else if (totalWin > 0) { resultSummary = "互有胜负"; summaryType = "push"; }
                     else { resultSummary = "全败..."; summaryType = "lose"; }
                 }
@@ -1088,11 +1423,11 @@
                 }
 
                 if (totalWin > 0) {
-                    texts.push({ id: Date.now(), text: `+${totalWin}`, x: '50%', y: '40%', color: summaryType==='bj'?'#fcd34d':'#4ade80' });
+                    texts.push({ id: Date.now(), text: `+${totalWin}`, x: '50%', y: '40%', color: summaryType === 'bj' ? '#fcd34d' : '#4ade80' });
                     updateBalance(balance + totalWin);
-                    
+
                     if (totalWin >= 5000 && user) {
-                         try { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `🎉 ${nickname || 'User'} 在21点赢了 $${totalWin}！`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); } catch(e) {}
+                        try { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `🎉 ${nickname || 'User'} 在21点赢了 $${totalWin}！`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); } catch (e) { }
                     }
                 }
                 setFloatingTexts(prev => [...prev, ...texts]);
@@ -1117,7 +1452,7 @@
             };
 
             const dScore = dealerHand.length > 0 ? (gameState === 'playing' || gameState === 'dealerTurn' || gameState === 'result' ? (gameState === 'playing' ? calculateScore([dealerHand[0]]) : calculateScore(dealerHand)) : 0) : 0;
-            
+
             const canSplit = gameState === 'playing' && playerHands.length === 1 && playerHands[0].cards.length === 2 && playerHands[0].cards[0].weight === playerHands[0].cards[1].weight;
             const canDouble = gameState === 'playing' && playerHands[activeHandIndex] && playerHands[activeHandIndex].cards.length === 2;
             const currentRank = getRankConfig(balance);
@@ -1135,7 +1470,7 @@
                         <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center animate-fade-in-up">
                             <div className="bg-slate-800 border-2 border-yellow-400 p-6 rounded-2xl text-center shadow-2xl max-w-xs w-[80%]">
                                 <h3 className="text-xl font-bold text-yellow-400 mb-2">庄家亮 A !</h3>
-                                <p className="text-white mb-4 text-sm">是否花费 ${Math.floor(bet/2)} 购买保险？<br/><span className="text-xs text-white/50">(如果庄家是 Blackjack，获赔 2:1)</span></p>
+                                <p className="text-white mb-4 text-sm">是否花费 ${Math.floor(bet / 2)} 购买保险？<br /><span className="text-xs text-white/50">(如果庄家是 Blackjack，获赔 2:1)</span></p>
                                 <div className="flex gap-4">
                                     <button onClick={() => handleInsurance(false)} className="flex-1 py-2 bg-slate-600 rounded-lg text-white">跳过</button>
                                     <button onClick={() => handleInsurance(true)} className="flex-1 py-2 bg-yellow-500 text-black font-bold rounded-lg shadow-[0_0_15px_rgba(234,179,8,0.5)]">购买</button>
@@ -1152,7 +1487,7 @@
                                     <div className="text-5xl mb-2">😿</div>
                                     <h3 className="text-2xl font-cute text-indigo-200 mb-2">没钱了...</h3>
                                     <button onClick={handleRelief} className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold px-8 py-3 rounded-full shadow-lg animate-pulse-gold">领取 $2,000 翻本</button>
-                                    <button onClick={()=>setShowRelief(false)} className="block mt-4 text-xs text-white/40 underline w-full">倔强离开</button>
+                                    <button onClick={() => setShowRelief(false)} className="block mt-4 text-xs text-white/40 underline w-full">倔强离开</button>
                                 </div>
                             </div>
                         </div>
@@ -1163,7 +1498,7 @@
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className={`w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center border-2 border-indigo-400 overflow-visible shadow-lg flex-shrink-0 relative ${streak >= 3 ? 'streak-fire' : ''}`}>
                                 <div className="w-full h-full rounded-full overflow-hidden">
-                                    <img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
+                                    <img src="1.jpg" className="w-full h-full object-cover" onError={(e) => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/616/616430.png' }} />
                                 </div>
                                 {streak >= 3 && <div className="absolute -bottom-1 -right-1 bg-red-600 text-white text-[8px] px-1 rounded-full font-bold border border-white">🔥{streak}</div>}
                             </div>
@@ -1181,12 +1516,12 @@
 
                     {/* Content Area */}
                     <div className="flex-1 overflow-y-auto w-full flex flex-col items-center pb-48 hide-scrollbar">
-                        
+
                         <div className="relative w-full flex flex-col justify-center items-center mt-28 mb-4 flex-shrink-0 max-w-lg">
                             <div className="game-container w-[95%] p-4 flex flex-col items-center min-h-[380px] justify-between">
                                 <div className="table-felt-pattern"></div>
                                 <MascotDealer gameState={gameState} resultType={resultType} splitWinCount={splitWinCount} onFeed={handleFeedMascot} feedAnim={feedAnim} feedCount={feedCount} showSuperFeed={showSuperFeed} />
-                                
+
                                 {/* 装饰性牌堆 */}
                                 <div className="absolute right-4 top-10 w-16 h-20 bg-indigo-900/50 rounded-lg border border-white/10 flex items-center justify-center transform rotate-6 z-0">
                                     <div className="absolute inset-0.5 bg-repeating-linear-gradient(45deg, #b91c1c, #b91c1c 5px, #991b1b 5px, #991b1b 10px) rounded opacity-50"></div>
@@ -1250,7 +1585,7 @@
                                     )}
                                 </div>
                             </div>
-                            
+
                             {/* 战绩榜放在这里 (游戏容器下方) */}
                             <StatsBoard db={dbRef.current} appId={appIdRef.current} />
                         </div>
@@ -1262,18 +1597,18 @@
                             <div className="flex flex-col gap-3">
                                 {/* 下注区域选择 */}
                                 <div className="flex justify-center gap-4 mb-1">
-                                    <button onClick={() => setSelectedBetType('pairs')} className={`bet-zone relative w-20 h-20 rounded-xl flex flex-col items-center justify-center ${selectedBetType==='pairs'?'ring-2 ring-yellow-400 bg-white/10':''} ${sideBets.pairs>0?'has-bet':''}`}>
+                                    <button onClick={() => setSelectedBetType('pairs')} className={`bet-zone relative w-20 h-20 rounded-xl flex flex-col items-center justify-center ${selectedBetType === 'pairs' ? 'ring-2 ring-yellow-400 bg-white/10' : ''} ${sideBets.pairs > 0 ? 'has-bet' : ''}`}>
                                         <span className="text-xs font-bold text-indigo-300">完美对子</span>
                                         <span className="text-[10px] text-white/40">25:1</span>
                                         {sideBets.pairs > 0 && <span className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] px-1.5 rounded-full shadow">${sideBets.pairs}</span>}
                                     </button>
-                                    
-                                    <button onClick={() => setSelectedBetType('main')} className={`bet-zone relative w-24 h-24 rounded-full border-4 flex flex-col items-center justify-center ${selectedBetType==='main'?'border-yellow-400 bg-white/10':'border-indigo-500/30'} ${bet>0?'has-bet border-yellow-400':''}`}>
+
+                                    <button onClick={() => setSelectedBetType('main')} className={`bet-zone relative w-24 h-24 rounded-full border-4 flex flex-col items-center justify-center ${selectedBetType === 'main' ? 'border-yellow-400 bg-white/10' : 'border-indigo-500/30'} ${bet > 0 ? 'has-bet border-yellow-400' : ''}`}>
                                         <span className="text-lg font-cute text-white">下注</span>
                                         {bet > 0 && <span className="text-sm font-mono font-bold text-yellow-400">${bet}</span>}
                                     </button>
 
-                                    <button onClick={() => setSelectedBetType('poker3')} className={`bet-zone relative w-20 h-20 rounded-xl flex flex-col items-center justify-center ${selectedBetType==='poker3'?'ring-2 ring-yellow-400 bg-white/10':''} ${sideBets.poker3>0?'has-bet':''}`}>
+                                    <button onClick={() => setSelectedBetType('poker3')} className={`bet-zone relative w-20 h-20 rounded-xl flex flex-col items-center justify-center ${selectedBetType === 'poker3' ? 'ring-2 ring-yellow-400 bg-white/10' : ''} ${sideBets.poker3 > 0 ? 'has-bet' : ''}`}>
                                         <span className="text-xs font-bold text-indigo-300">21+3</span>
                                         <span className="text-[10px] text-white/40">100:1</span>
                                         {sideBets.poker3 > 0 && <span className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] px-1.5 rounded-full shadow">${sideBets.poker3}</span>}
@@ -1303,20 +1638,20 @@
                                 <button onClick={hit} disabled={gameState === 'dealerTurn'} className="flex-1 py-3 bg-green-600 rounded-xl text-white font-bold text-lg shadow-lg active:scale-95 disabled:opacity-50 btn-action border-b-4 border-green-800 active:border-b-0 active:translate-y-1 transition-all">
                                     要牌 (Hit)
                                 </button>
-                                
+
                                 <div className="flex flex-col gap-2">
                                     {canDouble && (
                                         <button onClick={doubleDown} disabled={gameState === 'dealerTurn'} className="px-4 py-3 bg-yellow-500 rounded-xl text-black font-bold text-sm shadow-lg active:scale-95 disabled:opacity-50 btn-action border-b-4 border-yellow-700 active:border-b-0 active:translate-y-1 transition-all leading-none">
-                                            加倍<br/><span className="text-[10px] opacity-70">DOUBLE</span>
+                                            加倍<br /><span className="text-[10px] opacity-70">DOUBLE</span>
                                         </button>
                                     )}
                                     {canSplit && (
                                         <button onClick={splitPair} className="px-4 py-3 bg-purple-600 rounded-xl text-white font-bold text-sm shadow-lg active:scale-95 btn-action border-b-4 border-purple-800 active:border-b-0 active:translate-y-1 transition-all leading-none">
-                                            分牌<br/><span className="text-[10px] opacity-70">SPLIT</span>
+                                            分牌<br /><span className="text-[10px] opacity-70">SPLIT</span>
                                         </button>
                                     )}
                                 </div>
-                                
+
                                 <button onClick={stand} disabled={gameState === 'dealerTurn'} className="flex-1 py-3 bg-red-600 rounded-xl text-white font-bold text-lg shadow-lg active:scale-95 disabled:opacity-50 btn-action border-b-4 border-red-800 active:border-b-0 active:translate-y-1 transition-all">
                                     停牌 (Stand)
                                 </button>
@@ -1339,4 +1674,5 @@
         root.render(<App />);
     </script>
 </body>
+
 </html>
