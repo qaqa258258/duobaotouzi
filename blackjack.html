@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>多宝 21 点 (Blackjack) - 皇家赌场版</title>
     
-    <!-- 国内 CDN 加速 (Staticfile/Baomitu) -->
-    <script src="https://lib.baomitu.com/react/18.2.0/umd/react.production.min.js" crossorigin></script>
-    <script src="https://lib.baomitu.com/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://lib.baomitu.com/babel-standalone/7.22.20/babel.min.js"></script>
+    <!-- 原版 CDN (Google/Unpkg) -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
-    <script src="https://lib.baomitu.com/lucide/0.291.0/lucide.min.js"></script>
-    <!-- 字体国内镜像 -->
-    <link href="https://fonts.font.im/css2?family=Zcool+KuaiLe&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google 字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Zcool+KuaiLe&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
 
     <style>
         body, html {
@@ -193,27 +193,29 @@
         }
     </style>
 
-    <!-- 适配 Firebase Compat 模式 (使用国内源) -->
-    <script src="https://lib.baomitu.com/firebase/8.10.1/firebase-app-compat.js"></script>
-    <script src="https://lib.baomitu.com/firebase/8.10.1/firebase-auth-compat.js"></script>
-    <script src="https://lib.baomitu.com/firebase/8.10.1/firebase-firestore-compat.js"></script>
-    <script>
-        // Adapter for Domestic Firebase Compat
-        const initializeApp = (config) => firebase.initializeApp(config);
-        const getAuth = (app) => app.auth();
-        const signInAnonymously = (auth) => auth.signInAnonymously();
-        const onAuthStateChanged = (auth, cb) => auth.onAuthStateChanged(cb);
-        const getFirestore = (app) => app.firestore();
-        // Compat fixes for modular syntax
-        const collection = (db, ...paths) => db.collection(paths.join('/'));
-        const doc = (db, ...paths) => db.doc(paths.join('/'));
-        const setDoc = (ref, data, opt) => ref.set(data, opt);
-        const updateDoc = (ref, data) => ref.update(data);
-        const addDoc = (ref, data) => ref.add(data);
-        const onSnapshot = (ref, cb) => ref.onSnapshot(cb);
-        const serverTimestamp = () => firebase.firestore.FieldValue.serverTimestamp();
-
-        window.FB = { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, getFirestore, collection, doc, setDoc, updateDoc, addDoc, onSnapshot, serverTimestamp };
+    <!-- 原版 Firebase Modular SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, updateDoc, addDoc, onSnapshot, serverTimestamp, runTransaction, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // 挂载到 window 供 Babel Script 使用
+        window.FB = { 
+            initializeApp, 
+            getAuth, 
+            signInAnonymously, 
+            onAuthStateChanged, 
+            getFirestore, 
+            collection, 
+            doc, 
+            setDoc, 
+            updateDoc, 
+            addDoc, 
+            onSnapshot, 
+            serverTimestamp, 
+            runTransaction,
+            getDoc 
+        };
     </script>
 </head>
 <body>
@@ -316,10 +318,30 @@
 
             const sendMessage = async (textToSend) => {
                 const msg = textToSend || inputText.trim();
-                if (!msg || !user) return;
+                
+                if (!user) {
+                    alert("正在连接服务器...请稍候再试。\n(如果长时间未连接，请检查网络)");
+                    return;
+                }
+                if (!msg) return;
+
+                // Optimistic clear (立刻清空)
                 if(!textToSend) setInputText("");
+
                 const displayName = `${avatar || ''} ${nickname || `User ${user.uid.slice(0,3)}`}`.trim();
-                try { await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages'), { text: msg, senderId: user.uid.slice(0, 5), senderName: displayName, senderBalance: balance, isSystem: false, createdAt: window.FB.serverTimestamp() }); } catch (err) { }
+                try { 
+                    await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages'), { 
+                        text: msg, 
+                        senderId: user.uid.slice(0, 5), 
+                        senderName: displayName, 
+                        senderBalance: balance, 
+                        isSystem: false, 
+                        createdAt: window.FB.serverTimestamp() 
+                    }); 
+                } catch (err) { 
+                    console.error(err);
+                    alert("发送失败: " + err.message + "\n可能是网络不稳定。");
+                }
             };
 
             const quickEmojis = ["(≧∇≦)ﾉ", "🍀好运", "💰发财", "😭输光", "🐱喵", "🚀起飞"];
@@ -375,7 +397,12 @@
                                 <div ref={messagesEndRef} />
                             </div>
                             <div className="px-2 py-1 flex gap-2 overflow-x-auto hide-scrollbar bg-white/5">{quickEmojis.map(e => <button key={e} onClick={()=>sendMessage(e)} className="flex-shrink-0 bg-white/10 hover:bg-white/20 px-2 py-1 rounded-full text-[10px] text-white">{e}</button>)}</div>
-                            <form onSubmit={(e)=>{e.preventDefault(); sendMessage();}} className="p-2 bg-slate-800/50 border-t border-white/5 flex gap-2"><input type="text" value={inputText} onChange={(e)=>setInputText(e.target.value)} className="flex-1 bg-slate-900/50 border border-white/10 rounded-full px-3 py-1.5 text-xs text-white" placeholder="..." /><button type="submit" disabled={isEditingName} className="bg-indigo-500 text-white p-1.5 rounded-full"><lucide-icon name="send" size="14"></lucide-icon></button></form>
+                            <form onSubmit={(e)=>{e.preventDefault(); sendMessage();}} className="p-2 bg-slate-800/50 border-t border-white/5 flex gap-2">
+                                <input type="text" value={inputText} onChange={(e)=>setInputText(e.target.value)} disabled={!user} className="flex-1 bg-slate-900/50 border border-white/10 rounded-full px-3 py-1.5 text-xs text-white" placeholder={user ? "说点什么..." : "连接中..."} />
+                                <button type="submit" disabled={isEditingName || !user} className={`text-white p-1.5 rounded-full flex items-center justify-center w-8 h-8 ${!user ? 'bg-slate-600' : 'bg-indigo-500'}`}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                </button>
+                            </form>
                         </div>
                     )}
                     <button onClick={() => setIsOpen(!isOpen)} className="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg border-2 border-indigo-400 overflow-hidden relative active:scale-90 transition-transform">
@@ -1037,7 +1064,6 @@
                     <div className="absolute inset-0 pointer-events-none z-50">{floatingTexts.map(ft => <FloatingText key={ft.id} text={ft.text} x={ft.x} y={ft.y} color={ft.color} />)}</div>
                     {showSuperFeed && <SuperFeedEffect />}
 
-                    {/* ChatRoom Visibility Fix: Removed Strict firebaseReady check, rely on UI only, default open */}
                     <ChatRoom user={user} db={dbRef.current} appId={appIdRef.current} nickname={nickname} setNickname={setNickname} balance={balance} />
 
                     {/* 保险弹窗 */}
