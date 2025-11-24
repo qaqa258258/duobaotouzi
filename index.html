@@ -103,8 +103,13 @@
         .floating-text { position: absolute; font-weight: 900; font-family: 'Zcool KuaiLe', sans-serif; text-shadow: 0 2px 0px #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; white-space: nowrap; }
         
         @keyframes bounce-mascot { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @keyframes heart-beat { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
         .mascot-idle { animation: bounce-mascot 3s infinite ease-in-out; }
         .mascot-rolling { animation: bounce-mascot 0.2s infinite; }
+        .mascot-win { animation: bounce-mascot 0.5s infinite; }
+        .mascot-love { animation: heart-beat 0.5s infinite; }
+        .mascot-super { animation: heart-beat 0.3s infinite; box-shadow: 0 0 30px #fbbf24; border-color: #fbbf24 !important; }
+
         .animate-win { animation: bounce-mascot 0.5s infinite; border-color: #fcd34d !important; background-color: rgba(251, 191, 36, 0.2) !important; color: #fbbf24 !important; transform: scale(1.05); z-index: 10; box-shadow: 0 0 20px rgba(251, 191, 36, 0.4); }
 
         .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -157,6 +162,13 @@
             transform: skewX(-20deg);
             animation: shine-gold 3s infinite linear;
         }
+        
+        /* 超级投喂特效 - 雨落 */
+        @keyframes rain-fall { 
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 1; } 
+            100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } 
+        }
+        .rain-item { position: absolute; animation: rain-fall linear forwards; top: -50px; z-index: 90; }
         
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -226,6 +238,14 @@
                 AudioSynth.init(); const osc = AudioSynth.ctx.createOscillator(); const gain = AudioSynth.ctx.createGain();
                 osc.type = 'triangle'; osc.frequency.setValueAtTime(900, AudioSynth.ctx.currentTime); osc.frequency.linearRampToValueAtTime(1300, AudioSynth.ctx.currentTime+0.15); osc.frequency.linearRampToValueAtTime(700, AudioSynth.ctx.currentTime+0.3);
                 osc.connect(gain); gain.connect(AudioSynth.ctx.destination); osc.start(); gain.gain.exponentialRampToValueAtTime(0.001, AudioSynth.ctx.currentTime + 0.3); osc.stop(AudioSynth.ctx.currentTime + 0.3);
+            },
+            playKiss: () => {
+                AudioSynth.init(); const osc = AudioSynth.ctx.createOscillator(); const gain = AudioSynth.ctx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(1200, AudioSynth.ctx.currentTime); 
+                osc.frequency.exponentialRampToValueAtTime(600, AudioSynth.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, AudioSynth.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, AudioSynth.ctx.currentTime + 0.1);
+                osc.connect(gain); gain.connect(AudioSynth.ctx.destination); osc.start(); osc.stop(AudioSynth.ctx.currentTime + 0.1);
             },
             vibrate: (pattern) => { if (navigator.vibrate) navigator.vibrate(pattern); }
         };
@@ -381,6 +401,34 @@
             );
         };
 
+        // --- 超级投喂特效 ---
+        const SuperFeedEffect = () => {
+            const drops = Array.from({length: 30}).map((_,i) => ({
+                left: Math.random() * 100 + '%',
+                delay: Math.random() * 2 + 's',
+                duration: Math.random() * 1.5 + 1.5 + 's',
+                icon: Math.random() > 0.6 ? '🐟' : (Math.random()>0.5 ? '💖' : '💰'),
+                size: Math.random() * 1.5 + 1 + 'rem'
+            }));
+            
+            return (
+                <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
+                    <div className="absolute inset-0 bg-yellow-500/20 animate-pulse"></div>
+                    {drops.map((d, i) => (
+                        <div key={i} className="rain-item" style={{left: d.left, animationDelay: d.delay, animationDuration: d.duration, fontSize: d.size}}>
+                            {d.icon}
+                        </div>
+                    ))}
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-bounce">
+                        <div className="text-6xl mb-2">😻</div>
+                        <div className="text-4xl font-cute text-yellow-300 drop-shadow-[0_0_10px_red] whitespace-nowrap bg-black/50 px-4 py-2 rounded-xl border-2 border-yellow-400">
+                            猫神降临！财源广进！
+                        </div>
+                    </div>
+                </div>
+            )
+        };
+
         // --- 3D 骰子 ---
         const Die3D = ({ value, rolling, isGolden }) => {
             const [style, setStyle] = useState({});
@@ -418,21 +466,32 @@
         const FloatingText = ({ text, x, y, color }) => <div className="floating-text" style={{ left: x, top: y, fontSize: '24px', color: color || '#fbbf24' }}>{text}</div>;
 
         // --- 荷官 (Fix: 允许图片超出容器) ---
-        const MascotDealer = ({ gameState }) => {
+        const MascotDealer = ({ gameState, onFeed, feedAnim, feedCount, showSuperFeed }) => {
 
             const [msg, setMsg] = useState("");
             const [anim, setAnim] = useState("mascot-idle");
             useEffect(() => {
+                if (showSuperFeed) { setAnim("mascot-super"); setMsg("喵喵喵！爆米啦！"); return; }
+                if (feedAnim) { setAnim("mascot-love"); setMsg("老板大气! 爱你喵~"); return; }
+
                 if(gameState === 'rolling') { setAnim("mascot-rolling"); setMsg("祝你好运!"); }
                 else if(gameState === 'revealed') { setAnim("mascot-win"); setTimeout(()=>setMsg(""), 2000); }
                 else { setAnim("mascot-idle"); }
-            }, [gameState]);
+            }, [gameState, feedAnim, showSuperFeed]);
+            
             const poke = () => { AudioSynth.playMeow(); setAnim("mascot-win"); setMsg("喵呜~"); setTimeout(() => { setMsg(""); if(gameState==='idle') setAnim("mascot-idle"); }, 1500); };
+            
             return (
-                <div className="absolute -top-14 left-1/2 transform -translate-x-1/2 z-[60] flex flex-col items-center cursor-pointer" onClick={poke}>
-                    <div className={`relative w-24 h-24 ${anim}`}>
-
-                        <img src="1.jpg" className="w-full h-full rounded-full border-4 border-indigo-400 shadow-lg object-cover bg-white" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
+                <div className="absolute -top-14 left-1/2 transform -translate-x-1/2 z-[60] flex flex-col items-center cursor-pointer">
+                    <div className="relative" onClick={poke}>
+                        <div className={`relative w-24 h-24 ${anim}`}>
+                            <img src="1.jpg" className="w-full h-full rounded-full border-4 border-indigo-400 shadow-lg object-cover bg-white" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
+                        </div>
+                        {/* 投喂按钮 */}
+                        <button onClick={onFeed} className="absolute -bottom-2 -right-2 w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-white shadow-lg active:scale-90 transition-transform z-10 overflow-visible">
+                            <span className="text-xl">🐟</span>
+                            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold w-5 h-5 flex items-center justify-center rounded-full border border-white shadow-sm">{feedCount}/10</span>
+                        </button>
                     </div>
                     <div className={`speech-bubble ${msg ? 'show-bubble' : ''}`}>{msg}</div>
                 </div>
@@ -533,6 +592,11 @@
             const [resultText, setResultText] = useState(null); 
             const [showDailyBonus, setShowDailyBonus] = useState(false);
             const [showRelief, setShowRelief] = useState(false);
+            
+            // New Feed Logic State
+            const [feedAnim, setFeedAnim] = useState(false);
+            const [feedCount, setFeedCount] = useState(0);
+            const [showSuperFeed, setShowSuperFeed] = useState(false);
 
             const dbRef = useRef(null);
             const authRef = useRef(null);
@@ -655,6 +719,38 @@
 
             const handleRelief = () => { AudioSynth.playWin(); const newBalance = balance + 2000; setBalance(newBalance); updateCloudBalance(newBalance); setShowRelief(false); };
 
+            const handleFeedMascot = () => {
+                if (balance < 50) return;
+                const newBalance = balance - 50;
+                setBalance(newBalance);
+                updateCloudBalance(newBalance);
+                
+                const newCount = feedCount + 1;
+                setFeedCount(newCount);
+
+                if (newCount >= 10) {
+                    // Trigger Super Effect
+                    setFeedCount(0);
+                    setShowSuperFeed(true);
+                    AudioSynth.playJackpot();
+                    
+                    // Broadcast
+                    if (user && dbRef.current) {
+                         try { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `🔥 ${nickname || '老板'} 触发了猫神降临！全场膜拜！`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); } catch(e) {}
+                    }
+
+                    setTimeout(() => setShowSuperFeed(false), 5000);
+                } else {
+                    AudioSynth.playKiss();
+                    setFeedAnim(true);
+                    setTimeout(() => setFeedAnim(false), 2000);
+                    // Chance for chat msg
+                    if (Math.random() > 0.8 && user && dbRef.current) {
+                         try { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `${nickname || '老板'} 给猫猫喂了小鱼干!`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); } catch(e) {}
+                    }
+                }
+            };
+
             const addToBet = (category, key) => {
                 if (gameState !== 'idle') return;
                 if (balance < selectedChip) { AudioSynth.playLose(); return; }
@@ -734,6 +830,8 @@
                 <div className="theme-bg text-white flex flex-col h-full w-full relative">
                     <div className="absolute inset-0 theme-overlay pointer-events-none"></div>
                     <div className="absolute inset-0 pointer-events-none z-40">{floatingTexts.map(ft => <FloatingText key={ft.id} text={ft.text} x={ft.x} y={ft.y} color={ft.color} />)}</div>
+                    {showSuperFeed && <SuperFeedEffect />}
+                    
                     {firebaseReady && <ChatRoom user={user} db={dbRef.current} appId={appIdRef.current} nickname={nickname} setNickname={setNickname} balance={balance} />}
                     {showDailyBonus && <DailyBonusModal amount={10000} onClose={()=>setShowDailyBonus(false)} />}
                     {showRelief && <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur flex items-center justify-center p-6 animate-fade-in-up"><div className="bg-indigo-900 border-2 border-indigo-400 p-6 rounded-3xl text-center shadow-2xl w-full max-w-xs relative overflow-hidden"><div className="absolute inset-0 bg-indigo-500/10"></div><div className="relative z-10"><div className="text-5xl mb-2">😿</div><h3 className="text-2xl font-cute text-indigo-200 mb-2">没钱了...</h3><button onClick={handleRelief} className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold px-8 py-3 rounded-full shadow-lg animate-pulse-gold">领取 $2,000 翻本</button><button onClick={()=>setShowRelief(false)} className="block mt-4 text-xs text-white/40 underline w-full">倔强离开</button></div></div></div>}
@@ -763,7 +861,7 @@
                         {/* Game Area (Increased Top Margin) */}
                         <div className="relative w-full flex justify-center items-center mt-24 mb-4 flex-shrink-0">
                             <div className="game-container relative w-[85%] max-w-md h-36 flex justify-center items-center">
-                                <MascotDealer gameState={gameState} />
+                                <MascotDealer gameState={gameState} onFeed={handleFeedMascot} feedAnim={feedAnim} feedCount={feedCount} showSuperFeed={showSuperFeed} />
                                 <Die3D value={dice[0]} rolling={gameState === 'rolling'} isGolden={winningZones.includes('triple')} />
                                 <Die3D value={dice[1]} rolling={gameState === 'rolling'} isGolden={winningZones.includes('triple')} />
                                 <Die3D value={dice[2]} rolling={gameState === 'rolling'} isGolden={winningZones.includes('triple')} />
