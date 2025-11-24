@@ -1,0 +1,1149 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>多宝 21 点 (Blackjack) - 皇家赌场版</title>
+    
+    <!-- 国内 CDN 加速 (Staticfile/Baomitu) -->
+    <script src="https://lib.baomitu.com/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+    <script src="https://lib.baomitu.com/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://lib.baomitu.com/babel-standalone/7.22.20/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+    <script src="https://lib.baomitu.com/lucide/0.291.0/lucide.min.js"></script>
+    <!-- 字体国内镜像 -->
+    <link href="https://fonts.font.im/css2?family=Zcool+KuaiLe&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body, html {
+            height: 100%; margin: 0; padding: 0; font-family: 'Roboto', sans-serif;
+            background-color: #0f172a; 
+            overflow: hidden; touch-action: pan-y; user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+        #root { height: 100dvh; display: flex; flex-direction: column; }
+        .font-cute { font-family: 'Zcool KuaiLe', sans-serif; }
+
+        /* 主题背景 */
+        .theme-bg { 
+            background: radial-gradient(circle at 50% 0%, #2e1065 0%, #020617 100%); 
+        }
+        .theme-overlay {
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.3;
+        }
+
+        /* 玻璃面板 */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            border-radius: 20px;
+        }
+        
+        /* 游戏容器 - 高级桌台质感 */
+        .game-container {
+            position: relative;
+            background: radial-gradient(circle at 50% -20%, #334155 0%, #1e293b 60%, #0f172a 100%);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            box-shadow: 
+                0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+                0 20px 50px -10px rgba(0, 0, 0, 0.5),
+                0 0 30px rgba(139, 92, 246, 0.1);
+            border-radius: 40px;
+            overflow: visible !important; 
+        }
+        .table-felt-pattern {
+            position: absolute; inset: 0; opacity: 0.1;
+            background-image: radial-gradient(#fff 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+            border-radius: 38px;
+        }
+
+        /* 扑克牌样式 - 尺寸加大 */
+        .poker-card {
+            width: 95px; height: 136px; /* Desktop Size */
+            background: white; border-radius: 10px;
+            box-shadow: 2px 4px 12px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column; justify-content: space-between;
+            padding: 8px; position: relative;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+            font-family: sans-serif; font-weight: bold;
+            z-index: 10;
+        }
+        @media (max-width: 380px) {
+            .poker-card { width: 75px; height: 108px; padding: 6px; } /* Mobile Size */
+        }
+
+        .poker-back {
+            background: repeating-linear-gradient(45deg, #b91c1c, #b91c1c 10px, #991b1b 10px, #991b1b 20px);
+            border: 4px solid white;
+        }
+        
+        /* 进场动画 */
+        .card-enter { animation: flyIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0; }
+        @keyframes flyIn {
+            from { transform: translateY(-120px) scale(0.5) rotate(10deg); opacity: 0; }
+            to { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
+        }
+
+        /* 浮动文字动画 */
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-80px) scale(1.3); } }
+        .floating-text { position: absolute; font-weight: 900; font-family: 'Zcool KuaiLe', sans-serif; text-shadow: 0 2px 0px #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; white-space: nowrap; }
+
+        /* 吉祥物动画 */
+        @keyframes bounce-mascot { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @keyframes heart-beat { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+        .mascot-idle { animation: bounce-mascot 3s infinite ease-in-out; }
+        .mascot-shock { animation: bounce-mascot 0.2s infinite; }
+        .mascot-love { animation: heart-beat 0.5s infinite; }
+        
+        .speech-bubble { 
+            position: absolute; background: #fff; border-radius: 12px; padding: 6px 12px; 
+            font-size: 12px; color: #0f172a; top: -35px; left: 50%; transform: translateX(-50%); 
+            white-space: nowrap; box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+            opacity: 0; transition: opacity 0.3s, transform 0.3s; 
+            pointer-events: none; font-weight: bold; z-index: 30;
+            border: 2px solid #8b5cf6;
+        }
+        .speech-bubble::after { 
+            content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); 
+            border-width: 6px 6px 0; border-style: solid; border-color: #8b5cf6 transparent transparent transparent; 
+        }
+        .show-bubble { opacity: 1; transform: translateX(-50%) translateY(-5px); }
+
+        /* 连胜火焰特效 */
+        @keyframes fire-pulse {
+            0% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.5), 0 0 20px rgba(245, 158, 11, 0.5); border-color: #fca5a5; }
+            50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), 0 0 40px rgba(245, 158, 11, 0.8); border-color: #ef4444; }
+            100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.5), 0 0 20px rgba(245, 158, 11, 0.5); border-color: #fca5a5; }
+        }
+        .streak-fire {
+            animation: fire-pulse 1.5s infinite;
+            position: relative;
+        }
+        .streak-fire::before {
+            content: '🔥'; position: absolute; top: -10px; right: -10px; font-size: 20px; z-index: 50;
+            animation: bounce-mascot 1s infinite;
+        }
+
+        /* 结果浮层 */
+        .result-overlay { animation: popIn 0.3s ease-out; }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .btn-action {
+            position: relative; overflow: hidden;
+        }
+        .btn-action::after {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(to bottom right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+            transform: rotate(45deg) translateY(-100%); transition: transform 0.3s;
+        }
+        .btn-action:active::after { transform: rotate(45deg) translateY(0%); }
+        
+        .active-hand-glow {
+            box-shadow: 0 0 25px rgba(251, 191, 36, 0.3);
+            border: 2px solid rgba(251, 191, 36, 0.6);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .inactive-hand {
+            opacity: 0.6;
+            transform: scale(0.92);
+            filter: grayscale(0.5);
+        }
+        
+        /* 边注区域高亮 */
+        .bet-zone { transition: all 0.2s; border: 1px solid rgba(255,255,255,0.1); }
+        .bet-zone:active { transform: scale(0.95); }
+        .bet-zone.has-bet { border-color: #fbbf24; background-color: rgba(251, 191, 36, 0.15); box-shadow: inset 0 0 15px rgba(251, 191, 36, 0.2); }
+
+        /* 隐藏滚动条 */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .chat-scroll::-webkit-scrollbar { width: 0px; } 
+        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-pulse-gold { animation: pulseGold 2s infinite; }
+        @keyframes pulseGold { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
+    </style>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, updateDoc, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        window.FB = { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, getFirestore, collection, doc, setDoc, updateDoc, addDoc, onSnapshot, serverTimestamp };
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- 音效系统 ---
+        const AudioSynth = {
+            ctx: null,
+            init: () => { if (!AudioSynth.ctx) AudioSynth.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+            playTone: (freq, type, duration, vol = 0.1) => {
+                AudioSynth.init(); const osc = AudioSynth.ctx.createOscillator(); const gain = AudioSynth.ctx.createGain();
+                osc.type = type; osc.frequency.value = freq; osc.connect(gain); gain.connect(AudioSynth.ctx.destination);
+                osc.start(); gain.gain.setValueAtTime(vol, AudioSynth.ctx.currentTime); 
+                gain.gain.exponentialRampToValueAtTime(0.001, AudioSynth.ctx.currentTime + duration); 
+                osc.stop(AudioSynth.ctx.currentTime + duration);
+            },
+            playFlip: () => { AudioSynth.playTone(400, 'triangle', 0.1, 0.05); },
+            playChip: () => { AudioSynth.playTone(1200, 'sine', 0.05, 0.05); },
+            playWin: () => { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => AudioSynth.playTone(f, 'sine', 0.3, 0.1), i * 100)); },
+            playLose: () => { [300, 200].forEach((f, i) => setTimeout(() => AudioSynth.playTone(f, 'sawtooth', 0.3, 0.05), i * 200)); },
+            playBust: () => { AudioSynth.playTone(150, 'sawtooth', 0.4, 0.1); },
+            playSplit: () => { AudioSynth.playTone(1000, 'square', 0.1, 0.05); AudioSynth.playTone(1500, 'square', 0.1, 0.05); },
+            playJackpot: () => { [1000, 1200, 1500, 2000, 2500].forEach((f, i) => setTimeout(() => AudioSynth.playTone(f, 'square', 0.15), i * 60)); },
+            playMeow: () => { 
+                AudioSynth.init(); const osc = AudioSynth.ctx.createOscillator(); const gain = AudioSynth.ctx.createGain();
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(900, AudioSynth.ctx.currentTime); osc.frequency.linearRampToValueAtTime(1300, AudioSynth.ctx.currentTime+0.15); osc.frequency.linearRampToValueAtTime(700, AudioSynth.ctx.currentTime+0.3);
+                osc.connect(gain); gain.connect(AudioSynth.ctx.destination); osc.start(); gain.gain.exponentialRampToValueAtTime(0.001, AudioSynth.ctx.currentTime + 0.3); osc.stop(AudioSynth.ctx.currentTime + 0.3);
+            },
+            playKiss: () => {
+                AudioSynth.init(); const osc = AudioSynth.ctx.createOscillator(); const gain = AudioSynth.ctx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(1200, AudioSynth.ctx.currentTime); 
+                osc.frequency.exponentialRampToValueAtTime(600, AudioSynth.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, AudioSynth.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, AudioSynth.ctx.currentTime + 0.1);
+                osc.connect(gain); gain.connect(AudioSynth.ctx.destination); osc.start(); osc.stop(AudioSynth.ctx.currentTime + 0.1);
+            }
+        };
+
+        // --- 聊天室组件 (保持不变) ---
+        const ChatRoom = ({ user, db, appId, nickname, setNickname, balance }) => {
+            const [messages, setMessages] = useState([]);
+            const [isOpen, setIsOpen] = useState(false);
+            const [inputText, setInputText] = useState("");
+            const [isEditingName, setIsEditingName] = useState(!nickname);
+            const [tempName, setTempName] = useState(nickname);
+            const [avatar, setAvatar] = useState(() => localStorage.getItem('dice_game_avatar') || '🐱');
+            const [tempAvatar, setTempAvatar] = useState(() => localStorage.getItem('dice_game_avatar') || '🐱');
+            const messagesEndRef = useRef(null);
+
+            useEffect(() => {
+                if (!user || !db) return;
+                const q = window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
+                const unsubscribe = window.FB.onSnapshot(q, (snapshot) => {
+                    const msgs = []; 
+                    snapshot.forEach((doc) => msgs.push({ id: doc.id, ...doc.data() }));
+                    msgs.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                    setMessages(msgs.slice(-50));
+                });
+                return () => unsubscribe();
+            }, [user, db, appId]);
+
+            useEffect(() => {
+                if (!isOpen) return;
+                const el = messagesEndRef.current;
+                if (!el) return;
+                setTimeout(() => { el.scrollIntoView({ behavior: "smooth", block: "end" }); }, 0);
+            }, [messages, isOpen]);
+
+            const formatTime = (timestamp) => {
+                if (!timestamp || !timestamp.seconds) return '';
+                const date = new Date(timestamp.seconds * 1000);
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            };
+
+            const saveNickname = () => { 
+                if(tempName.trim()) { 
+                    setNickname(tempName.trim()); 
+                    localStorage.setItem('dice_game_nickname', tempName.trim()); 
+                }
+                if (tempAvatar.trim()) {
+                    setAvatar(tempAvatar.trim());
+                    localStorage.setItem('dice_game_avatar', tempAvatar.trim());
+                }
+                setIsEditingName(false); 
+            };
+
+            const sendMessage = async (textToSend) => {
+                const msg = textToSend || inputText.trim();
+                if (!msg || !user) return;
+                if(!textToSend) setInputText("");
+                const displayName = `${avatar || ''} ${nickname || `User ${user.uid.slice(0,3)}`}`.trim();
+                try { await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages'), { text: msg, senderId: user.uid.slice(0, 5), senderName: displayName, senderBalance: balance, isSystem: false, createdAt: window.FB.serverTimestamp() }); } catch (err) { }
+            };
+
+            const quickEmojis = ["(≧∇≦)ﾉ", "🍀好运", "💰发财", "😭输光", "🐱喵", "🚀起飞"];
+
+            return (
+                <div className={`fixed bottom-32 right-4 z-[60] flex flex-col items-end`}>
+                    {isOpen && (
+                        <div className="mb-2 w-72 h-80 glass-panel flex flex-col overflow-hidden border border-indigo-500/30 shadow-2xl animate-fade-in-up bg-slate-900/95">
+                            <div className="bg-indigo-600/90 p-2 flex justify-between items-center">
+                                <span className="text-white font-bold text-xs">💬 俱乐部热聊</span>
+                                <button onClick={() => setIsOpen(false)} className="text-white/80 px-2">✕</button>
+                            </div>
+                            {isEditingName ? (
+                                <div className="absolute inset-0 z-20 bg-slate-900/95 flex flex-col items-center justify-center p-4 space-y-3">
+                                    <input type="text" value={tempName} onChange={(e)=>setTempName(e.target.value)} placeholder="请输入昵称" className="w-full bg-white/10 border border-indigo-400 rounded-full px-4 py-2 text-white text-center text-sm" />
+                                    <input type="text" value={tempAvatar} onChange={(e)=>setTempAvatar(e.target.value)} placeholder="头像 emoji，如 🐱" className="w-full bg-white/10 border border-indigo-400 rounded-full px-4 py-2 text-white text-center text-sm" />
+                                    <div className="flex gap-2 text-xl">
+                                        {['🐱','🐯','🐶','🐼','🐻','🐵'].map(em => (
+                                            <button key={em} type="button" onClick={()=>setTempAvatar(em)} className={`w-8 h-8 flex items-center justify-center rounded-full ${tempAvatar===em?'bg-indigo-500':'bg-white/10'}`}>{em}</button>
+                                        ))}
+                                    </div>
+                                    <button onClick={saveNickname} className="mt-1 bg-indigo-500 text-white px-6 py-2 rounded-full font-bold text-sm">进入</button>
+                                </div>
+                            ) : (
+                                <div className="bg-indigo-900/30 px-3 py-1 text-[10px] text-indigo-200 flex justify-between items-center cursor-pointer border-b border-white/5" onClick={()=>setIsEditingName(true)}>
+                                    <span className="flex items-center gap-1">
+                                        <span>{avatar}</span>
+                                        <span>{nickname}</span>
+                                    </span>
+                                    <span>(修改)</span>
+                                </div>
+                            )}
+
+                            <div className="flex-1 overflow-y-auto p-2 space-y-2 chat-scroll">
+                                {messages.map((msg) => {
+                                    const isMe = msg.senderId === user?.uid.slice(0, 5);
+                                    if (msg.isSystem) return (<div key={msg.id} className="flex justify-center"><span className="bg-yellow-500/20 text-yellow-200 text-[10px] px-2 py-0.5 rounded-full border border-yellow-500/30">📣 {msg.text}</span></div>);
+                                    return (
+                                        <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                                            <div className="flex items-center gap-1 mb-0.5 px-1">
+                                                <span className="text-[10px] text-white/70">{msg.senderName}</span>
+                                                <span className="text-[9px] text-white/30 ml-1">{formatTime(msg.createdAt)}</span>
+                                            </div>
+                                            <div className={`max-w-[90%] px-3 py-1.5 rounded-xl text-xs break-words ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
+                                                {msg.text}
+                                                {msg.senderBalance !== undefined && <div className={`text-[8px] mt-1 text-right font-bold ${isMe ? 'text-yellow-200' : 'text-yellow-400'}`}>💰{msg.senderBalance.toLocaleString()}</div>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                <div ref={messagesEndRef} />
+                            </div>
+                            <div className="px-2 py-1 flex gap-2 overflow-x-auto hide-scrollbar bg-white/5">{quickEmojis.map(e => <button key={e} onClick={()=>sendMessage(e)} className="flex-shrink-0 bg-white/10 hover:bg-white/20 px-2 py-1 rounded-full text-[10px] text-white">{e}</button>)}</div>
+                            <form onSubmit={(e)=>{e.preventDefault(); sendMessage();}} className="p-2 bg-slate-800/50 border-t border-white/5 flex gap-2"><input type="text" value={inputText} onChange={(e)=>setInputText(e.target.value)} className="flex-1 bg-slate-900/50 border border-white/10 rounded-full px-3 py-1.5 text-xs text-white" placeholder="..." /><button type="submit" disabled={isEditingName} className="bg-indigo-500 text-white p-1.5 rounded-full"><lucide-icon name="send" size="14"></lucide-icon></button></form>
+                        </div>
+                    )}
+                    <button onClick={() => setIsOpen(!isOpen)} className="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg border-2 border-indigo-400 overflow-hidden relative active:scale-90 transition-transform">
+                        {isOpen ? <span className="text-xl font-bold">✕</span> : <img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/724/724715.png'}} />}
+                    </button>
+                </div>
+            );
+        };
+
+        // --- 荷官吉祥物 ---
+        const MascotDealer = ({ gameState, resultType, splitWinCount, onFeed, feedAnim }) => {
+            const [msg, setMsg] = useState("");
+            const [anim, setAnim] = useState("mascot-idle");
+            
+            useEffect(() => {
+                if (feedAnim) { setAnim("mascot-love"); setMsg("老板大气! 爱你喵~"); return; }
+
+                if (gameState === 'betting') { setAnim("mascot-idle"); setMsg("加点注吗？"); }
+                else if (gameState === 'playing') { setAnim("mascot-idle"); setMsg("祝你好运!"); }
+                else if (gameState === 'insurance') { setAnim("mascot-shock"); setMsg("要买保险吗？"); }
+                else if (gameState === 'dealerTurn') { setAnim("mascot-shock"); setMsg("我算算..."); }
+                else if (gameState === 'result') {
+                    if (splitWinCount !== undefined) {
+                        if (splitWinCount === 2) { setAnim("mascot-shock"); setMsg("太强了！双杀！"); }
+                        else if (splitWinCount === 1) { setAnim("mascot-idle"); setMsg("一胜一负，不亏~"); }
+                        else { setAnim("mascot-idle"); setMsg("嘿嘿，全收了！"); }
+                    } else {
+                        if (resultType === 'win' || resultType === 'bj' || resultType === 'dragon') { setAnim("mascot-shock"); setMsg("哎呀！你赢了！"); }
+                        else if (resultType === 'lose' || resultType === 'bust') { setAnim("mascot-idle"); setMsg("嘿嘿，收米！"); }
+                        else { setMsg("平局~"); }
+                    }
+                }
+            }, [gameState, resultType, splitWinCount, feedAnim]);
+
+            const poke = () => { AudioSynth.playMeow(); setAnim("mascot-shock"); setMsg("偷看底牌？达咩！"); setTimeout(() => { setMsg(""); setAnim("mascot-idle"); }, 1500); };
+
+            return (
+                <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 z-[40] flex flex-col items-center">
+                    <div className="relative cursor-pointer" onClick={poke}>
+                        <div className={`relative w-24 h-24 ${anim}`}>
+                            <img src="1.jpg" className="w-full h-full rounded-full border-4 border-indigo-400 shadow-lg object-cover bg-white" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
+                        </div>
+                        {/* 投喂按钮 */}
+                        <button onClick={onFeed} className="absolute -bottom-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-white shadow-lg active:scale-90 transition-transform z-10">
+                            <span className="text-lg">🐟</span>
+                        </button>
+                    </div>
+                    <div className={`speech-bubble ${msg ? 'show-bubble' : ''}`}>{msg}</div>
+                </div>
+            );
+        };
+
+        // --- 浮动文字 ---
+        const FloatingText = ({ text, x, y, color }) => <div className="floating-text" style={{ left: x, top: y, fontSize: '28px', color: color || '#fbbf24' }}>{text}</div>;
+
+        // --- 扑克逻辑 ---
+        const SUITS = ['♠', '♥', '♣', '♦'];
+        const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+        const createDeck = () => {
+            let deck = [];
+            for (let s of SUITS) {
+                for (let v of VALUES) {
+                    let weight = parseInt(v);
+                    if (v === 'A') weight = 11;
+                    if (['J', 'Q', 'K'].includes(v)) weight = 10;
+                    deck.push({ suit: s, value: v, weight, id: Math.random() });
+                }
+            }
+            return deck.sort(() => Math.random() - 0.5);
+        };
+
+        const calculateScore = (hand) => {
+            let score = 0;
+            let aces = 0;
+            hand.forEach(card => {
+                score += card.weight;
+                if (card.value === 'A') aces += 1;
+            });
+            while (score > 21 && aces > 0) {
+                score -= 10;
+                aces -= 1;
+            }
+            return score;
+        };
+
+        // --- 组件: 扑克牌 ---
+        const Card = ({ card, hidden, index, total }) => {
+            const isRed = card.suit === '♥' || card.suit === '♦';
+            const offsetX = index * 25; 
+            const rotate = (index - (total - 1) / 2) * 3;
+
+            if (hidden) {
+                return (
+                    <div className="absolute poker-card poker-back card-enter" 
+                         style={{ left: `${offsetX}px`, zIndex: index, animationDelay: `${index * 0.1}s` }}>
+                    </div>
+                );
+            }
+            return (
+                <div className={`absolute poker-card card-enter ${isRed ? 'text-red-600' : 'text-slate-900'}`} 
+                     style={{ left: `${offsetX}px`, zIndex: index, animationDelay: `${index * 0.1}s`, transform: `rotate(${rotate}deg)` }}>
+                    <div className="text-xl leading-none font-bold">{card.value}</div>
+                    <div className="text-4xl absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">{card.suit}</div>
+                    <div className="text-xl leading-none self-end rotate-180 font-bold">{card.value}</div>
+                </div>
+            );
+        };
+
+        // --- 边注计算逻辑 ---
+        const getPairsWin = (card1, card2, bet) => {
+             if (card1.value !== card2.value) return 0;
+             // 混合对子 (6:1)
+             if (card1.suit !== card2.suit && (['♥','♦'].includes(card1.suit) !== ['♥','♦'].includes(card2.suit))) return bet * 6;
+             // 同色对子 (12:1)
+             if (card1.suit !== card2.suit) return bet * 12;
+             // 完美对子 (25:1)
+             return bet * 25;
+        };
+
+        const getPoker3Win = (card1, card2, dealerCard, bet) => {
+            const cards = [card1, card2, dealerCard].sort((a,b) => a.weight - b.weight);
+            const suits = cards.map(c => c.suit);
+            const values = cards.map(c => c.weight); // Simplified for straights using weights 2-11. (Real Poker 3 uses rank)
+            const ranks = cards.map(c => VALUES.indexOf(c.value)); // 0-12
+            ranks.sort((a,b)=>a-b);
+            
+            const isFlush = suits[0] === suits[1] && suits[1] === suits[2];
+            const isStraight = (ranks[1] === ranks[0] + 1 && ranks[2] === ranks[1] + 1) || (ranks[0]===0 && ranks[1]===9 && ranks[2]===10) || (ranks[0]===0 && ranks[1]===1 && ranks[2]===12); // Handle A,2,3 or Q,K,A? 21+3 usually A,2,3 or Q,K,A. A is 0 or 12.
+            // Check specific straights: A,2,3 (0,1,2) OK. Q,K,A (0,11,12) -> (0,11,12) sorted.
+            
+            const isTrips = ranks[0] === ranks[1] && ranks[1] === ranks[2];
+
+            if (isFlush && isStraight) return bet * 40; // 同花顺
+            if (isTrips && isFlush) return bet * 100; // 同花三条
+            if (isTrips) return bet * 30; // 三条
+            if (isStraight) return bet * 10; // 顺子
+            if (isFlush) return bet * 5; // 同花
+            return 0;
+        };
+
+        // --- 主程序 ---
+        const App = () => {
+            const [balance, setBalance] = useState(0);
+            const [user, setUser] = useState(null);
+            const [deck, setDeck] = useState([]);
+            
+            // Hands: Array of { cards: [], bet: number, status: 'playing'|'stand'|'bust'|'blackjack'|'double'|'dragon' }
+            const [playerHands, setPlayerHands] = useState([]);
+            const [activeHandIndex, setActiveHandIndex] = useState(0);
+
+            const [dealerHand, setDealerHand] = useState([]);
+            const [gameState, setGameState] = useState('betting'); // betting, playing, dealerTurn, result, insurance
+            const [resultType, setResultType] = useState(null);
+            
+            // Bets
+            const [bet, setBet] = useState(0); // Main Bet
+            const [sideBets, setSideBets] = useState({ pairs: 0, poker3: 0 }); // Side Bets
+            const [selectedBetType, setSelectedBetType] = useState('main'); // 'main', 'pairs', 'poker3'
+
+            const [resultMessage, setResultMessage] = useState("");
+            const [resultAmount, setResultAmount] = useState(0);
+            const [floatingTexts, setFloatingTexts] = useState([]);
+            
+            const [nickname, setNickname] = useState('');
+            const [showRelief, setShowRelief] = useState(false);
+            const [splitWinCount, setSplitWinCount] = useState(undefined); 
+            
+            // Insurance State
+            const [insuranceBet, setInsuranceBet] = useState(0);
+            
+            // New Features State
+            const [streak, setStreak] = useState(0);
+            const [feedAnim, setFeedAnim] = useState(false);
+
+            const dbRef = useRef(null);
+            const appIdRef = useRef('default-app-id');
+
+            // 0. 加载本地昵称
+            useEffect(() => { 
+                const savedName = localStorage.getItem('dice_game_nickname'); 
+                if (savedName) setNickname(savedName); 
+            }, []);
+
+            // 1. Firebase 初始化
+            useEffect(() => {
+                const initFirebase = async () => {
+                    if (!window.FB) return;
+                    const config = { apiKey: "AIzaSyCfoqSV5dI6-dzrvfx1e1NHnbpwlBTloKw", authDomain: "haer-870de.firebaseapp.com", projectId: "haer-870de", storageBucket: "haer-870de.firebasestorage.app", messagingSenderId: "397525543796", appId: "1:397525543796:web:c503e7ebb1586335615a21", measurementId: "G-08352H7R4G" };
+
+                    try {
+                        let app; try { app = window.FB.initializeApp(config); } catch (e) { return; }
+                        const auth = window.FB.getAuth(app);
+                        dbRef.current = window.FB.getFirestore(app);
+                        await window.FB.signInAnonymously(auth);
+                        window.FB.onAuthStateChanged(auth, (u) => { if (u) setUser(u); });
+                    } catch (e) { console.error(e); }
+                };
+                initFirebase();
+            }, []);
+
+            // 2. 同步余额 & 救济金检测
+            useEffect(() => {
+                if (!user || !dbRef.current) return;
+                const docRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'users', user.uid, 'data', 'account');
+
+                const unsubscribe = window.FB.onSnapshot(docRef, (doc) => {
+                    if (doc.exists()) {
+                        const data = doc.data();
+                        setBalance(data.balance || 0);
+                        if (data.balance < 100 && bet === 0 && sideBets.pairs === 0 && sideBets.poker3 === 0 && gameState === 'betting') {
+                            setTimeout(() => setShowRelief(true), 1000);
+                        }
+                    } else {
+                        window.FB.setDoc(docRef, { balance: 10000 }, { merge: true });
+                        setBalance(10000);
+                    }
+                });
+                return () => unsubscribe();
+            }, [user, gameState, bet, sideBets]);
+
+            const updateBalance = async (newBalance) => {
+                if (!user || !dbRef.current) return;
+                const docRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'users', user.uid, 'data', 'account');
+                await window.FB.updateDoc(docRef, { balance: newBalance });
+                const leaderRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'leaderboard', user.uid);
+                window.FB.setDoc(leaderRef, { 
+                    balance: newBalance, 
+                    nickname: nickname || `User ${user.uid.slice(0,3)}`,
+                    updatedAt: window.FB.serverTimestamp()
+                }, { merge: true });
+            };
+
+            const handleRelief = () => { 
+                AudioSynth.playWin(); 
+                const newBalance = balance + 2000; 
+                setBalance(newBalance); 
+                updateBalance(newBalance); 
+                setShowRelief(false); 
+            };
+
+            const handleFeedMascot = () => {
+                if (balance < 50) return;
+                AudioSynth.playKiss();
+                setFeedAnim(true);
+                updateBalance(balance - 50);
+                setTimeout(() => setFeedAnim(false), 2000);
+                
+                // 概率触发聊天消息
+                if (Math.random() > 0.5 && user) {
+                    try { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `${nickname || '老板'} 给猫猫买了小鱼干!`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); } catch(e) {}
+                }
+            };
+
+            // --- 游戏逻辑 ---
+
+            const addToBet = (amount) => {
+                if (balance < amount) { AudioSynth.playBust(); return; }
+                AudioSynth.playChip();
+                
+                if (selectedBetType === 'main') {
+                    setBet(prev => prev + amount);
+                } else if (selectedBetType === 'pairs') {
+                    setSideBets(prev => ({...prev, pairs: prev.pairs + amount}));
+                } else if (selectedBetType === 'poker3') {
+                    setSideBets(prev => ({...prev, poker3: prev.poker3 + amount}));
+                }
+                updateBalance(balance - amount);
+            };
+
+            const clearBet = () => {
+                const totalBet = bet + sideBets.pairs + sideBets.poker3;
+                if (totalBet === 0) return;
+                AudioSynth.playChip();
+                updateBalance(balance + totalBet);
+                setBet(0);
+                setSideBets({ pairs: 0, poker3: 0 });
+            };
+
+            const startGame = () => {
+                if (bet === 0) { alert("请下主注！"); return; }
+                const newDeck = createDeck();
+                const initialPlayerHand = [newDeck.pop(), newDeck.pop()];
+                const initialDealerHand = [newDeck.pop(), newDeck.pop()];
+
+                setDeck(newDeck);
+                setPlayerHands([{ cards: initialPlayerHand, bet: bet, status: 'playing' }]);
+                setActiveHandIndex(0);
+                setDealerHand(initialDealerHand);
+                setFloatingTexts([]);
+                setSplitWinCount(undefined);
+                setInsuranceBet(0);
+                AudioSynth.playFlip();
+
+                // 立即结算边注 (Side Bets)
+                let sideWinTotal = 0;
+                const newTexts = [];
+                
+                // 完美对子
+                if (sideBets.pairs > 0) {
+                    const win = getPairsWin(initialPlayerHand[0], initialPlayerHand[1], sideBets.pairs);
+                    if (win > 0) {
+                        sideWinTotal += (win + sideBets.pairs);
+                        newTexts.push({ id: 'sb_pair', text: `对子赢! +${win}`, x: '30%', y: '50%', color: '#fcd34d' });
+                        AudioSynth.playJackpot();
+                    }
+                }
+                // 21+3
+                if (sideBets.poker3 > 0) {
+                    const win = getPoker3Win(initialPlayerHand[0], initialPlayerHand[1], initialDealerHand[0], sideBets.poker3);
+                    if (win > 0) {
+                        sideWinTotal += (win + sideBets.poker3);
+                        newTexts.push({ id: 'sb_poker', text: `扑克赢! +${win}`, x: '70%', y: '50%', color: '#fcd34d' });
+                        AudioSynth.playJackpot();
+                    }
+                }
+
+                if (sideWinTotal > 0) {
+                    updateBalance(balance + sideWinTotal); // Balance was already deducted
+                    setFloatingTexts(newTexts);
+                }
+
+                // 检查保险 (庄家明牌是A)
+                if (initialDealerHand[0].value === 'A') {
+                    setGameState('insurance');
+                } else {
+                    setGameState('playing');
+                    // 检查天胡 (仅当没有保险时直接检查，如果有保险等保险流程完)
+                    if (calculateScore(initialPlayerHand) === 21) {
+                         setTimeout(() => handleGameOver([{ cards: initialPlayerHand, bet: bet, status: 'blackjack' }], initialDealerHand, true), 1000);
+                    }
+                }
+            };
+
+            const handleInsurance = (buy) => {
+                if (buy) {
+                    const cost = Math.floor(bet / 2);
+                    if (balance < cost) { alert("余额不足买保险"); return; }
+                    updateBalance(balance - cost);
+                    setInsuranceBet(cost);
+                    AudioSynth.playChip();
+                }
+                
+                setGameState('playing');
+                if (calculateScore(dealerHand) === 21) {
+                    setTimeout(() => handleGameOver(playerHands, dealerHand, false, true), 500); // Trigger game over
+                } else {
+                    if (buy) {
+                        setFloatingTexts(prev => [...prev, { id: 'ins_lose', text: `保险失效`, x: '50%', y: '40%', color: '#ef4444' }]);
+                    }
+                    if (calculateScore(playerHands[0].cards) === 21) {
+                        setTimeout(() => handleGameOver([{ ...playerHands[0], status: 'blackjack' }], dealerHand, true), 1000);
+                    }
+                }
+            };
+
+            const splitPair = () => {
+                if (playerHands.length !== 1) return; 
+                if (balance < bet) { AudioSynth.playBust(); alert("余额不足以分牌"); return; }
+                updateBalance(balance - bet);
+                AudioSynth.playSplit();
+
+                const handToSplit = playerHands[0];
+                const card1 = handToSplit.cards[0];
+                const card2 = handToSplit.cards[1];
+
+                const newDeck = [...deck];
+                const newCard1 = newDeck.pop();
+                const newCard2 = newDeck.pop();
+                setDeck(newDeck);
+
+                const hand1 = { cards: [card1, newCard1], bet: bet, status: 'playing' };
+                const hand2 = { cards: [card2, newCard2], bet: bet, status: 'playing' };
+
+                setPlayerHands([hand1, hand2]);
+                setActiveHandIndex(0); 
+            };
+
+            const doubleDown = () => {
+                const currentHand = playerHands[activeHandIndex];
+                if (currentHand.cards.length !== 2) return;
+                if (balance < currentHand.bet) { AudioSynth.playBust(); alert("余额不足加倍"); return; }
+                
+                updateBalance(balance - currentHand.bet);
+                AudioSynth.playChip();
+
+                const newDeck = [...deck];
+                const card = newDeck.pop();
+                setDeck(newDeck);
+                
+                setPlayerHands(prev => {
+                    const newHands = [...prev];
+                    const active = {...newHands[activeHandIndex]};
+                    active.bet = active.bet * 2;
+                    active.cards = [...active.cards, card];
+                    // Double down usually forces stand (unless bust)
+                    const score = calculateScore(active.cards);
+                    if (score > 21) {
+                        active.status = 'bust';
+                        AudioSynth.playBust();
+                    } else {
+                        // 5-Card Charlie Check (Win immediately if 5 cards and <= 21)
+                        if (active.cards.length >= 5 && score <= 21) {
+                             active.status = 'dragon';
+                        } else {
+                             active.status = 'stand';
+                        }
+                    }
+                    newHands[activeHandIndex] = active;
+                    return newHands;
+                });
+                
+                setTimeout(() => checkNextHand(playerHands), 600); 
+            };
+            
+            useEffect(() => {
+                if (gameState === 'playing' && playerHands.length > 0) {
+                    const currentHand = playerHands[activeHandIndex];
+                    if (currentHand && (currentHand.status !== 'playing')) {
+                        if (activeHandIndex < playerHands.length - 1) {
+                             setTimeout(() => setActiveHandIndex(prev => prev + 1), 500);
+                        } else {
+                             if (playerHands.every(h => h.status !== 'playing')) {
+                                 setTimeout(() => playDealerTurn(playerHands), 500);
+                             }
+                        }
+                    }
+                }
+            }, [playerHands, activeHandIndex, gameState]);
+
+
+            const hit = () => {
+                const newDeck = [...deck];
+                const card = newDeck.pop();
+                setDeck(newDeck);
+                AudioSynth.playFlip();
+
+                setPlayerHands(prevHands => {
+                    const newHands = [...prevHands];
+                    const activeHand = { ...newHands[activeHandIndex] };
+                    activeHand.cards = [...activeHand.cards, card];
+                    const score = calculateScore(activeHand.cards);
+                    
+                    if (score > 21) {
+                        activeHand.status = 'bust';
+                        AudioSynth.playBust();
+                    } else if (activeHand.cards.length >= 5) {
+                        // 5-Card Charlie
+                        activeHand.status = 'dragon';
+                        AudioSynth.playJackpot();
+                    }
+
+                    newHands[activeHandIndex] = activeHand;
+                    return newHands;
+                });
+            };
+
+            const stand = () => {
+                setPlayerHands(prevHands => {
+                    const newHands = [...prevHands];
+                    newHands[activeHandIndex].status = 'stand';
+                    return newHands;
+                });
+            };
+
+            const checkNextHand = (currentHands) => { };
+
+            const playDealerTurn = async (finalPlayerHands) => {
+                // If everyone busted or has 5-Card Charlie (auto win), Dealer doesn't need to play normally
+                // But if player has 5-Card Charlie, they win UNLESS dealer has BJ. 
+                // But dealer BJ is checked at start usually. 
+                // Standard rule: 5-Card Charlie beats non-BJ dealer hands.
+                
+                const needDealerPlay = finalPlayerHands.some(h => h.status === 'stand');
+
+                if (!needDealerPlay) {
+                    handleGameOver(finalPlayerHands, dealerHand);
+                    return;
+                }
+
+                setGameState('dealerTurn');
+                let currentDeck = [...deck];
+                let currentDHand = [...dealerHand];
+                
+                while (calculateScore(currentDHand) < 17) {
+                    await new Promise(r => setTimeout(r, 800));
+                    currentDHand.push(currentDeck.pop());
+                    setDealerHand([...currentDHand]); 
+                    setDeck(currentDeck);
+                    AudioSynth.playFlip();
+                }
+                setTimeout(() => handleGameOver(finalPlayerHands, currentDHand), 500);
+            };
+
+            const handleGameOver = (pHands, dHand, isInstantBJ = false, dealerHasBlackjack = false) => {
+                const dScore = calculateScore(dHand);
+                let totalWin = 0;
+                let winCount = 0;
+                let resultSummary = "";
+                let summaryType = "lose";
+                const texts = [];
+
+                if (insuranceBet > 0) {
+                    if (dealerHasBlackjack) {
+                        const insWin = insuranceBet * 3;
+                        totalWin += insWin;
+                        texts.push({ id: 'ins_win', text: `保险生效! +${insWin}`, x: '50%', y: '30%', color: '#fcd34d' });
+                    }
+                }
+
+                pHands.forEach((hand) => {
+                    const pScore = calculateScore(hand.cards);
+                    let handWin = 0;
+
+                    if (hand.status === 'bust') {
+                        // Lost
+                    } else if (hand.status === 'dragon') {
+                        // 5-Card Charlie pays 2:1 usually in arcade versions for fun, or 1:1. Let's do 2:1 for fun.
+                        handWin = hand.bet * 3; 
+                        winCount++;
+                    } else if (dealerHasBlackjack) {
+                        if (hand.status === 'blackjack' || (isInstantBJ)) {
+                             handWin = hand.bet; // Push
+                        }
+                    } else if (isInstantBJ && hand.status === 'blackjack') {
+                        handWin = Math.floor(hand.bet + hand.bet * 1.5);
+                        winCount++;
+                    } else if (dScore > 21) {
+                        handWin = hand.bet * 2; winCount++;
+                    } else if (pScore > dScore) {
+                        handWin = hand.bet * 2; winCount++;
+                    } else if (pScore === dScore) {
+                        handWin = hand.bet; 
+                    }
+                    totalWin += handWin;
+                });
+
+                setGameState('result');
+                setResultAmount(totalWin);
+                setSplitWinCount(pHands.length > 1 ? winCount : undefined);
+
+                // Summary and Streak Logic
+                if (dealerHasBlackjack) {
+                    resultSummary = "庄家 Blackjack!"; summaryType = "lose";
+                    if (totalWin > 0) { resultSummary += " (保险保本)"; summaryType="push"; }
+                } else if (pHands.length === 1) {
+                    if (pHands[0].status === 'dragon') { resultSummary = "五龙护体! 赢!"; summaryType = "dragon"; }
+                    else if (totalWin > pHands[0].bet) { resultSummary = "你赢了！"; summaryType = "win"; }
+                    else if (totalWin === pHands[0].bet) { resultSummary = "平局 (Push)"; summaryType = "push"; }
+                    else { resultSummary = "庄家胜"; summaryType = "lose"; }
+                    
+                    if (pHands[0].status === 'bust') { resultSummary = "爆牌！你输了"; summaryType = "bust"; }
+                    if (isInstantBJ) { resultSummary = "Blackjack!"; summaryType = "bj"; }
+                } else {
+                    if (winCount === 2) { resultSummary = "全胜！Double Win!"; summaryType = "win"; }
+                    else if (totalWin > (bet * 2)) { resultSummary = "赢了！"; summaryType = "win"; } 
+                    else if (totalWin > 0) { resultSummary = "互有胜负"; summaryType = "push"; }
+                    else { resultSummary = "全败..."; summaryType = "lose"; }
+                }
+
+                setResultMessage(resultSummary);
+                setResultType(summaryType);
+
+                // Streak Calculation
+                if (summaryType === 'win' || summaryType === 'bj' || summaryType === 'dragon') {
+                    setStreak(prev => prev + 1);
+                } else if (summaryType === 'lose' || summaryType === 'bust') {
+                    setStreak(0);
+                }
+
+                if (totalWin > 0) {
+                    texts.push({ id: Date.now(), text: `+${totalWin}`, x: '50%', y: '40%', color: summaryType==='bj'?'#fcd34d':'#4ade80' });
+                    updateBalance(balance + totalWin);
+                    
+                    if (totalWin >= 5000 && user) {
+                         try { window.FB.addDoc(window.FB.collection(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'chat_messages'), { text: `🎉 ${nickname || 'User'} 在21点赢了 $${totalWin}！`, senderId: 'SYSTEM', senderName: '系统', isSystem: true, createdAt: window.FB.serverTimestamp() }); } catch(e) {}
+                    }
+                }
+                setFloatingTexts(prev => [...prev, ...texts]);
+
+                if (summaryType === 'win' || summaryType === 'bj') AudioSynth.playWin();
+                else if (summaryType === 'bust') AudioSynth.playBust();
+                else if (summaryType === 'lose') AudioSynth.playLose();
+                else if (summaryType === 'dragon') AudioSynth.playJackpot();
+            };
+
+            const resetGame = () => {
+                setPlayerHands([]);
+                setDealerHand([]);
+                setGameState('betting');
+                setBet(0);
+                setSideBets({ pairs: 0, poker3: 0 });
+                setResultMessage("");
+                setFloatingTexts([]);
+                setResultType(null);
+                setActiveHandIndex(0);
+                setInsuranceBet(0);
+            };
+
+            const dScore = dealerHand.length > 0 ? (gameState === 'playing' || gameState === 'dealerTurn' || gameState === 'result' ? (gameState === 'playing' ? calculateScore([dealerHand[0]]) : calculateScore(dealerHand)) : 0) : 0;
+            
+            const canSplit = gameState === 'playing' && playerHands.length === 1 && playerHands[0].cards.length === 2 && playerHands[0].cards[0].weight === playerHands[0].cards[1].weight;
+            const canDouble = gameState === 'playing' && playerHands[activeHandIndex] && playerHands[activeHandIndex].cards.length === 2;
+
+            return (
+                <div className="theme-bg text-white flex flex-col h-full w-full relative">
+                    <div className="absolute inset-0 theme-overlay pointer-events-none"></div>
+                    <div className="absolute inset-0 pointer-events-none z-50">{floatingTexts.map(ft => <FloatingText key={ft.id} text={ft.text} x={ft.x} y={ft.y} color={ft.color} />)}</div>
+
+                    {dbRef.current && <ChatRoom user={user} db={dbRef.current} appId={appIdRef.current} nickname={nickname} setNickname={setNickname} balance={balance} />}
+
+                    {/* 保险弹窗 */}
+                    {gameState === 'insurance' && (
+                        <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center animate-fade-in-up">
+                            <div className="bg-slate-800 border-2 border-yellow-400 p-6 rounded-2xl text-center shadow-2xl max-w-xs w-[80%]">
+                                <h3 className="text-xl font-bold text-yellow-400 mb-2">庄家亮 A !</h3>
+                                <p className="text-white mb-4 text-sm">是否花费 ${Math.floor(bet/2)} 购买保险？<br/><span className="text-xs text-white/50">(如果庄家是 Blackjack，获赔 2:1)</span></p>
+                                <div className="flex gap-4">
+                                    <button onClick={() => handleInsurance(false)} className="flex-1 py-2 bg-slate-600 rounded-lg text-white">跳过</button>
+                                    <button onClick={() => handleInsurance(true)} className="flex-1 py-2 bg-yellow-500 text-black font-bold rounded-lg shadow-[0_0_15px_rgba(234,179,8,0.5)]">购买</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showRelief && (
+                        <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur flex items-center justify-center p-6 animate-fade-in-up">
+                            <div className="bg-indigo-900 border-2 border-indigo-400 p-6 rounded-3xl text-center shadow-2xl w-full max-w-xs relative overflow-hidden">
+                                <div className="absolute inset-0 bg-indigo-500/10"></div>
+                                <div className="relative z-10">
+                                    <div className="text-5xl mb-2">😿</div>
+                                    <h3 className="text-2xl font-cute text-indigo-200 mb-2">没钱了...</h3>
+                                    <button onClick={handleRelief} className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold px-8 py-3 rounded-full shadow-lg animate-pulse-gold">领取 $2,000 翻本</button>
+                                    <button onClick={()=>setShowRelief(false)} className="block mt-4 text-xs text-white/40 underline w-full">倔强离开</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Header */}
+                    <div className="z-50 w-full max-w-4xl p-3 flex justify-between items-center relative flex-shrink-0">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {/* 更新：使用 1.jpg 猫咪头像 + 连胜火焰 */}
+                            <div className={`w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center border-2 border-indigo-400 overflow-visible shadow-lg flex-shrink-0 relative ${streak >= 3 ? 'streak-fire' : ''}`}>
+                                <div className="w-full h-full rounded-full overflow-hidden">
+                                    <img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
+                                </div>
+                                {streak >= 3 && <div className="absolute -bottom-1 -right-1 bg-red-600 text-white text-[8px] px-1 rounded-full font-bold border border-white">🔥{streak}</div>}
+                            </div>
+                            <div className="min-w-0 flex items-baseline gap-2">
+                                <h1 className="font-cute text-xl text-indigo-200 drop-shadow-sm truncate">皇家 21点</h1>
+                                {gameState === 'result' && <span className="result-tag text-xs bg-yellow-500 text-black px-2 rounded-full font-bold animate-bounce">{resultMessage}</span>}
+                            </div>
+                        </div>
+                        <div className="glass-panel px-3 py-1 flex items-center gap-2 flex-shrink-0 ml-2 border-indigo-500/30">
+                            <a href="index.html" className="text-xs bg-white/10 px-2 py-1 rounded text-indigo-300 hover:text-white transition-colors mr-2">🎲 玩骰子</a>
+                            <span className="text-yellow-400 text-base">💰</span>
+                            <span className="text-lg font-mono font-bold text-white">{balance.toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    {/* Content Area */}
+                    <div className="flex-1 overflow-y-auto w-full flex flex-col items-center pb-48 hide-scrollbar">
+                        
+                        {/* 增加顶部间距 mt-28 以防止荷官遮挡 */}
+                        <div className="relative w-full flex flex-col justify-center items-center mt-28 mb-4 flex-shrink-0 max-w-lg">
+                            <div className="game-container w-[95%] p-4 flex flex-col items-center min-h-[380px] justify-between">
+                                <div className="table-felt-pattern"></div>
+                                <MascotDealer gameState={gameState} resultType={resultType} splitWinCount={splitWinCount} onFeed={handleFeedMascot} feedAnim={feedAnim} />
+                                
+                                {/* 装饰性牌堆 */}
+                                <div className="absolute right-4 top-10 w-16 h-20 bg-indigo-900/50 rounded-lg border border-white/10 flex items-center justify-center transform rotate-6 z-0">
+                                    <div className="absolute inset-0.5 bg-repeating-linear-gradient(45deg, #b91c1c, #b91c1c 5px, #991b1b 5px, #991b1b 10px) rounded opacity-50"></div>
+                                </div>
+
+                                {/* Dealer Area */}
+                                <div className="w-full flex flex-col items-center mt-6 mb-2 relative z-10">
+                                    <div className="mb-2 flex items-center gap-2">
+                                        <div className="text-xs font-bold text-white/80 tracking-widest bg-slate-900/80 px-3 py-1 rounded-full border border-indigo-500/30 shadow-sm flex items-center gap-1">
+                                            <span>庄家 DEALER</span>
+                                            {dealerHand.length > 0 && <span className="text-yellow-400 font-mono ml-1">({dScore})</span>}
+                                        </div>
+                                    </div>
+                                    <div className="relative h-[136px] w-full flex justify-center">
+                                        {dealerHand.length === 0 ? (
+                                            <div className="w-[95px] h-[136px] border-2 border-dashed border-white/10 rounded-lg flex items-center justify-center text-white/10 text-xl font-cute">庄家位</div>
+                                        ) : (
+                                            dealerHand.map((card, i) => (
+                                                <Card key={`${card.suit}-${card.value}-${i}`} card={card} hidden={(gameState === 'playing' || gameState === 'insurance') && i === 1} index={i} total={dealerHand.length} />
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Center Message / Divider */}
+                                <div className="h-8 flex items-center justify-center w-full z-20">
+                                    {gameState === 'result' && (
+                                        <div className="result-overlay bg-black/80 backdrop-blur-md px-6 py-1.5 rounded-full border border-yellow-500/50 text-center shadow-[0_0_20px_rgba(234,179,8,0.4)]">
+                                            <div className="font-cute text-lg text-yellow-400">{resultMessage} {resultAmount > 0 && <span className="ml-2 font-mono text-green-400">+{resultAmount}</span>}</div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Player Area */}
+                                <div className="w-full flex justify-center gap-4 mb-2 z-10 items-end">
+                                    {playerHands.length === 0 ? (
+                                        <div className="w-[95px] h-[136px] border-2 border-dashed border-white/10 rounded-lg flex items-center justify-center text-white/10 text-xl font-cute">闲家位</div>
+                                    ) : (
+                                        playerHands.map((hand, handIdx) => {
+                                            const isActive = gameState === 'playing' && handIdx === activeHandIndex;
+                                            const pScore = calculateScore(hand.cards);
+                                            const isDragon = hand.status === 'dragon';
+                                            return (
+                                                <div key={handIdx} className={`flex flex-col items-center transition-all duration-300 ${isActive ? 'scale-105 active-hand-glow rounded-xl p-1' : (playerHands.length > 1 && gameState === 'playing' ? 'inactive-hand' : '')}`}>
+                                                    <div className="relative h-[136px] w-[100px] flex justify-center mb-2">
+                                                        {hand.cards.map((card, i) => (
+                                                            <Card key={`${card.suit}-${card.value}-${i}`} card={card} index={i} total={hand.cards.length} />
+                                                        ))}
+                                                        {hand.status === 'bust' && <div className="absolute inset-0 flex items-center justify-center z-20"><span className="text-red-500 font-black text-3xl -rotate-12 bg-black/80 px-2 border-2 border-red-500 rounded shadow-lg">爆!</span></div>}
+                                                        {isDragon && <div className="absolute inset-0 flex items-center justify-center z-20"><span className="text-yellow-400 font-black text-2xl rotate-12 bg-black/80 px-2 border-2 border-yellow-400 rounded shadow-lg animate-pulse">五龙!</span></div>}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`text-xs font-bold tracking-widest px-3 py-0.5 rounded-full border transition-colors shadow-sm ${isActive ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-indigo-600/80 text-yellow-100 border-indigo-400'}`}>
+                                                            {pScore}
+                                                        </div>
+                                                        <div className="text-[10px] text-yellow-400 font-mono bg-black/40 px-2 py-0.5 rounded-full">${hand.bet}</div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Footer - Betting & Controls */}
+                    <div className="absolute bottom-0 left-0 w-full p-3 bg-slate-900/95 border-t border-indigo-500/20 backdrop-blur-md z-50">
+                        {gameState === 'betting' && (
+                            <div className="flex flex-col gap-3">
+                                {/* 下注区域选择 */}
+                                <div className="flex justify-center gap-4 mb-1">
+                                    <button onClick={() => setSelectedBetType('pairs')} className={`bet-zone relative w-20 h-20 rounded-xl flex flex-col items-center justify-center ${selectedBetType==='pairs'?'ring-2 ring-yellow-400 bg-white/10':''} ${sideBets.pairs>0?'has-bet':''}`}>
+                                        <span className="text-xs font-bold text-indigo-300">完美对子</span>
+                                        <span className="text-[10px] text-white/40">25:1</span>
+                                        {sideBets.pairs > 0 && <span className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] px-1.5 rounded-full shadow">${sideBets.pairs}</span>}
+                                    </button>
+                                    
+                                    <button onClick={() => setSelectedBetType('main')} className={`bet-zone relative w-24 h-24 rounded-full border-4 flex flex-col items-center justify-center ${selectedBetType==='main'?'border-yellow-400 bg-white/10':'border-indigo-500/30'} ${bet>0?'has-bet border-yellow-400':''}`}>
+                                        <span className="text-lg font-cute text-white">下注</span>
+                                        {bet > 0 && <span className="text-sm font-mono font-bold text-yellow-400">${bet}</span>}
+                                    </button>
+
+                                    <button onClick={() => setSelectedBetType('poker3')} className={`bet-zone relative w-20 h-20 rounded-xl flex flex-col items-center justify-center ${selectedBetType==='poker3'?'ring-2 ring-yellow-400 bg-white/10':''} ${sideBets.poker3>0?'has-bet':''}`}>
+                                        <span className="text-xs font-bold text-indigo-300">21+3</span>
+                                        <span className="text-[10px] text-white/40">100:1</span>
+                                        {sideBets.poker3 > 0 && <span className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] px-1.5 rounded-full shadow">${sideBets.poker3}</span>}
+                                    </button>
+                                </div>
+
+                                <div className="w-full max-w-4xl mx-auto flex justify-between items-center gap-3">
+                                    <button onClick={clearBet} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white/70 active:bg-white/20">
+                                        <lucide-icon name="rotate-ccw" size="18"></lucide-icon>
+                                    </button>
+                                    <div className="flex gap-2 flex-1 overflow-x-auto hide-scrollbar px-1 justify-center relative">
+                                        {[100, 500, 1000, 5000].map(val => (
+                                            <button key={val} onClick={() => addToBet(val)} className={`flex-shrink-0 w-12 h-12 rounded-full border-2 border-dashed flex items-center justify-center font-bold text-[10px] transition-transform active:scale-90 bg-slate-800 text-white border-indigo-400 hover:border-yellow-400 hover:scale-110 hover:-translate-y-1`}>
+                                                {val}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <button onClick={startGame} disabled={bet === 0} className={`flex-1 max-w-[120px] py-2.5 rounded-xl font-cute text-xl tracking-widest shadow-lg active:scale-95 transition-all ${bet > 0 ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-indigo-500/40' : 'bg-slate-700 text-slate-500'}`}>
+                                        发 牌
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {(gameState === 'playing' || gameState === 'dealerTurn') && (
+                            <div className="flex gap-3 max-w-lg mx-auto">
+                                <button onClick={hit} disabled={gameState === 'dealerTurn'} className="flex-1 py-3 bg-green-600 rounded-xl text-white font-bold text-lg shadow-lg active:scale-95 disabled:opacity-50 btn-action border-b-4 border-green-800 active:border-b-0 active:translate-y-1 transition-all">
+                                    要牌 (Hit)
+                                </button>
+                                
+                                <div className="flex flex-col gap-2">
+                                    {canDouble && (
+                                        <button onClick={doubleDown} disabled={gameState === 'dealerTurn'} className="px-4 py-3 bg-yellow-500 rounded-xl text-black font-bold text-sm shadow-lg active:scale-95 disabled:opacity-50 btn-action border-b-4 border-yellow-700 active:border-b-0 active:translate-y-1 transition-all leading-none">
+                                            加倍<br/><span className="text-[10px] opacity-70">DOUBLE</span>
+                                        </button>
+                                    )}
+                                    {canSplit && (
+                                        <button onClick={splitPair} className="px-4 py-3 bg-purple-600 rounded-xl text-white font-bold text-sm shadow-lg active:scale-95 btn-action border-b-4 border-purple-800 active:border-b-0 active:translate-y-1 transition-all leading-none">
+                                            分牌<br/><span className="text-[10px] opacity-70">SPLIT</span>
+                                        </button>
+                                    )}
+                                </div>
+                                
+                                <button onClick={stand} disabled={gameState === 'dealerTurn'} className="flex-1 py-3 bg-red-600 rounded-xl text-white font-bold text-lg shadow-lg active:scale-95 disabled:opacity-50 btn-action border-b-4 border-red-800 active:border-b-0 active:translate-y-1 transition-all">
+                                    停牌 (Stand)
+                                </button>
+                            </div>
+                        )}
+
+                        {gameState === 'result' && (
+                            <div className="max-w-lg mx-auto">
+                                <button onClick={resetGame} className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl text-black font-bold text-xl shadow-lg animate-pulse btn-action">
+                                    再来一局
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
