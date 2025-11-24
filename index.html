@@ -145,12 +145,41 @@
         .leader-item:nth-child(3) .rank-num { color: #f97316; text-shadow: 0 0 8px #f97316; }
         .positive-score { color: #4ade80; text-shadow: 0 0 5px rgba(74, 222, 128, 0.3); }
         .negative-score { color: #f87171; }
+
+        /* 头衔徽章特效 */
+        @keyframes shine-gold { 0% { background-position: -100px; } 100% { background-position: 200px; } }
+        .badge-shine {
+            position: relative; overflow: hidden;
+        }
+        .badge-shine::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transform: skewX(-20deg);
+            animation: shine-gold 3s infinite linear;
+        }
     </style>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, updateDoc, addDoc, onSnapshot, serverTimestamp, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <!-- 适配 Firebase Compat 模式 (使用国内源) -->
+    <script src="https://lib.baomitu.com/firebase/8.10.1/firebase-app-compat.js"></script>
+    <script src="https://lib.baomitu.com/firebase/8.10.1/firebase-auth-compat.js"></script>
+    <script src="https://lib.baomitu.com/firebase/8.10.1/firebase-firestore-compat.js"></script>
+    <script>
+        // Adapter for Domestic Firebase Compat
+        const initializeApp = (config) => firebase.initializeApp(config);
+        const getAuth = (app) => app.auth();
+        const signInAnonymously = (auth) => auth.signInAnonymously();
+        const onAuthStateChanged = (auth, cb) => auth.onAuthStateChanged(cb);
+        const getFirestore = (app) => app.firestore();
+        // Compat fixes for modular syntax
+        const collection = (db, ...paths) => db.collection(paths.join('/'));
+        const doc = (db, ...paths) => db.doc(paths.join('/'));
+        const setDoc = (ref, data, opt) => ref.set(data, opt);
+        const updateDoc = (ref, data) => ref.update(data);
+        const addDoc = (ref, data) => ref.add(data);
+        const onSnapshot = (ref, cb) => ref.onSnapshot(cb);
+        const serverTimestamp = () => firebase.firestore.FieldValue.serverTimestamp();
+        const runTransaction = (db, updateFn) => db.runTransaction(updateFn);
+
         window.FB = { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, getFirestore, collection, doc, setDoc, updateDoc, addDoc, onSnapshot, serverTimestamp, runTransaction };
     </script>
 <link rel="stylesheet" href="/index.css">
@@ -159,6 +188,18 @@
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
+
+        // --- 头衔系统逻辑 ---
+        const getRankConfig = (balance) => {
+            const bal = balance || 0;
+            if (bal >= 200000) return { title: '🐉 多宝至尊', color: 'bg-gradient-to-r from-gray-900 to-yellow-600 border-yellow-400 text-yellow-200 badge-shine shadow-[0_0_10px_#ca8a04]' };
+            if (bal >= 100000) return { title: '👑 多宝霸主', color: 'bg-gradient-to-r from-red-600 to-pink-600 border-pink-300 text-white badge-shine' };
+            if (bal >= 80000) return { title: '🏆 宝藏守护者', color: 'bg-purple-600 border-purple-400 text-white' };
+            if (bal >= 60000) return { title: '🥇 多宝大亨', color: 'bg-yellow-600 border-yellow-400 text-white' };
+            if (bal >= 40000) return { title: '🥈 夺宝奇兵', color: 'bg-slate-400 border-slate-200 text-slate-900' };
+            if (bal >= 20000) return { title: '🥉 多宝新秀', color: 'bg-orange-700 border-orange-500 text-orange-100' };
+            return { title: '🐣 寻宝学徒', color: 'bg-slate-700 border-slate-500 text-slate-300' };
+        };
 
         // --- 音效 ---
         const AudioSynth = {
@@ -277,11 +318,13 @@
                             <div className="flex-1 overflow-y-auto p-2 space-y-2 chat-scroll">
                                 {messages.map((msg) => {
                                     const isMe = msg.senderId === user?.uid.slice(0, 5);
+                                    const rank = getRankConfig(msg.senderBalance);
 
                                     if (msg.isSystem) return (<div key={msg.id} className="flex justify-center"><span className="bg-yellow-500/20 text-yellow-200 text-[10px] px-2 py-0.5 rounded-full border border-yellow-500/30">📣 {msg.text}</span></div>);
                                     return (
                                         <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                                             <div className="flex items-center gap-1 mb-0.5 px-1">
+                                                <span className={`text-[9px] px-1 rounded border ${rank.color} scale-90 origin-left`}>{rank.title}</span>
                                                 <span className="text-[10px] text-white/70">{msg.senderName}</span>
                                                 <span className="text-[9px] text-white/30 ml-1">{formatTime(msg.createdAt)}</span>
                                             </div>
@@ -395,7 +438,9 @@
                         </h3>
                         <div className="space-y-2">
                             {leaders.length === 0 && <div className="text-white/30 text-sm text-center py-4">暂无战绩，快来抢占榜首！</div>}
-                            {leaders.map((player, index) => (
+                            {leaders.map((player, index) => {
+                                const rank = getRankConfig(player.balance);
+                                return (
                                 <div key={index} className="leader-item flex justify-between items-center bg-slate-800/60 p-3 rounded-lg border border-white/5">
                                     <div className="flex items-center gap-3">
                                         <span className={`rank-num font-bold w-6 text-center ${index===0?'text-yellow-400':index===1?'text-gray-300':index===2?'text-orange-400':'text-white/40'}`}>
@@ -406,13 +451,14 @@
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-xs text-indigo-100">{player.nickname || '神秘人'}</span>
+                                            <span className={`text-[9px] px-1 rounded border self-start ${rank.color}`}>{rank.title}</span>
                                         </div>
                                     </div>
                                     <span className={`font-mono text-sm font-bold ${player.profit >= 0 ? 'positive-score' : 'negative-score'}`}>
                                         {player.profit >= 0 ? '+' : ''}{player.profit?.toLocaleString()}
                                     </span>
                                 </div>
-                            ))}
+                            )})}
                         </div>
                     </div>
                 </div>
@@ -642,6 +688,7 @@
             };
 
             const chips = [100, 500, 1000, 5000];
+            const currentRank = getRankConfig(balance);
 
             return (
                 <div className="theme-bg text-white flex flex-col h-full w-full relative">
@@ -655,9 +702,9 @@
                     <div className="z-50 w-full max-w-4xl p-3 flex justify-between items-center relative flex-shrink-0">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-400 shadow-lg bg-slate-900 flex-shrink-0"><img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} /></div>
-                            <div className="min-w-0 flex items-baseline gap-2">
-                                <h1 className="font-cute text-xl text-indigo-200 drop-shadow-sm truncate">多宝骰子</h1>
-                                {resultText && <span className="result-tag">{resultText}</span>}
+                            <div className="min-w-0 flex flex-col">
+                                <h1 className="font-cute text-xl text-indigo-200 drop-shadow-sm truncate leading-none">多宝骰子</h1>
+                                <div className={`text-[10px] px-1.5 py-0.5 mt-1 rounded border w-fit ${currentRank.color}`}>{currentRank.title}</div>
                             </div>
                         </div>
                         <div className="glass-panel px-3 py-1 flex items-center gap-2 flex-shrink-0 ml-2 border-indigo-500/30">
