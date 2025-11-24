@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -275,8 +276,10 @@
             const [inputText, setInputText] = useState("");
             const [isEditingName, setIsEditingName] = useState(!nickname);
             const [tempName, setTempName] = useState(nickname);
+            // Load Avatar from LocalStorage (synced with Shop)
             const [avatar, setAvatar] = useState(() => localStorage.getItem('dice_game_avatar') || '🐱');
-            const [tempAvatar, setTempAvatar] = useState(() => localStorage.getItem('dice_game_avatar') || '🐱');
+            const [avatarImg, setAvatarImg] = useState(() => localStorage.getItem('active_avatar') || '1.jpg');
+            
             const messagesEndRef = useRef(null);
 
             useEffect(() => {
@@ -313,10 +316,6 @@
                     setNickname(tempName.trim()); 
                     localStorage.setItem('dice_game_nickname', tempName.trim()); 
                 }
-                if (tempAvatar.trim()) {
-                    setAvatar(tempAvatar.trim());
-                    localStorage.setItem('dice_game_avatar', tempAvatar.trim());
-                }
                 setIsEditingName(false); 
             };
 
@@ -331,7 +330,7 @@
 
                 if(!textToSend) setInputText("");
 
-                const displayName = `${avatar || ''} ${nickname || `User ${user.uid.slice(0,3)}`}`.trim();
+                const displayName = `${nickname || `User ${user.uid.slice(0,3)}`}`.trim();
                 try { 
                     await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages'), { 
                         text: msg, 
@@ -360,18 +359,11 @@
                             {isEditingName ? (
                                 <div className="absolute inset-0 z-20 bg-slate-900/95 flex flex-col items-center justify-center p-4 space-y-3">
                                     <input type="text" value={tempName} onChange={(e)=>setTempName(e.target.value)} placeholder="请输入昵称" className="w-full bg-white/10 border border-indigo-400 rounded-full px-4 py-2 text-white text-center text-sm" />
-                                    <input type="text" value={tempAvatar} onChange={(e)=>setTempAvatar(e.target.value)} placeholder="头像 emoji，如 🐱" className="w-full bg-white/10 border border-indigo-400 rounded-full px-4 py-2 text-white text-center text-sm" />
-                                    <div className="flex gap-2 text-xl">
-                                        {['🐱','🐯','🐶','🐼','🐻','🐵'].map(em => (
-                                            <button key={em} type="button" onClick={()=>setTempAvatar(em)} className={`w-8 h-8 flex items-center justify-center rounded-full ${tempAvatar===em?'bg-indigo-500':'bg-white/10'}`}>{em}</button>
-                                        ))}
-                                    </div>
                                     <button onClick={saveNickname} className="mt-1 bg-indigo-500 text-white px-6 py-2 rounded-full font-bold text-sm">进入</button>
                                 </div>
                             ) : (
                                 <div className="bg-indigo-900/30 px-3 py-1 text-[10px] text-indigo-200 flex justify-between items-center cursor-pointer border-b border-white/5" onClick={()=>setIsEditingName(true)}>
                                     <span className="flex items-center gap-1">
-                                        <span>{avatar}</span>
                                         <span>{nickname}</span>
                                     </span>
                                     <span>(修改)</span>
@@ -411,7 +403,7 @@
                         </div>
                     )}
                     <button onClick={() => setIsOpen(!isOpen)} className="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg border-2 border-indigo-400 overflow-hidden relative active:scale-90 transition-transform">
-                        {isOpen ? <span className="text-xl font-bold">✕</span> : <img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/724/724715.png'}} />}
+                        {isOpen ? <span className="text-xl font-bold">✕</span> : <img src={avatarImg} className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/724/724715.png'}} />}
                     </button>
                 </div>
             );
@@ -486,6 +478,14 @@
 
             const [msg, setMsg] = useState("");
             const [anim, setAnim] = useState("mascot-idle");
+            const [avatarImg, setAvatarImg] = useState('1.jpg');
+
+            useEffect(() => {
+                // Load avatar from local storage (synced with shop)
+                const saved = localStorage.getItem('active_avatar');
+                if (saved) setAvatarImg(saved);
+            }, []);
+
             useEffect(() => {
                 if (showSuperFeed) { setAnim("mascot-super"); setMsg("喵喵喵！爆米啦！"); return; }
                 if (feedAnim) { setAnim("mascot-love"); setMsg("老板大气! 爱你喵~"); return; }
@@ -616,6 +616,9 @@
             
             // New: Repeat Bet Logic
             const [lastBetHistory, setLastBetHistory] = useState([]);
+            
+            // New: Avatar State
+            const [avatarImg, setAvatarImg] = useState(() => localStorage.getItem('active_avatar') || '1.jpg');
 
             const dbRef = useRef(null);
             const authRef = useRef(null);
@@ -898,14 +901,17 @@
                     {/* Header */}
                     <div className="z-50 w-full max-w-4xl p-3 flex justify-between items-center relative flex-shrink-0">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-400 shadow-lg bg-slate-900 flex-shrink-0"><img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} /></div>
+                            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-400 shadow-lg bg-slate-900 flex-shrink-0"><img src={avatarImg} className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} /></div>
                             <div className="min-w-0 flex flex-col">
                                 <h1 className="font-cute text-xl text-indigo-200 drop-shadow-sm truncate leading-none">多宝骰子</h1>
                                 <div className={`text-[10px] px-1.5 py-0.5 mt-1 rounded border w-fit ${currentRank.color}`}>{currentRank.title}</div>
                             </div>
                         </div>
                         <div className="glass-panel px-3 py-1 flex items-center gap-2 flex-shrink-0 ml-2 border-indigo-500/30">
-                            {/* 新增: 跳转到 21 点按钮 - 使用相对路径保持 Session */}
+                            {/* 增加商城入口 */}
+                            <a href="shop.html" className="text-xs bg-yellow-500/20 px-2 py-1 rounded text-yellow-300 hover:text-white transition-colors mr-1">
+                                🛍️ 商城
+                            </a>
                             <button onClick={() => window.location.href = 'blackjack.html'} className="text-xs bg-indigo-500/20 px-2 py-1 rounded text-indigo-300 hover:text-white transition-colors mr-2">
                                 ♠️ 玩21点
                             </button>

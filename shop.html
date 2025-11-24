@@ -1,0 +1,262 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>多宝商城 (Duo Bao Mall)</title>
+    
+    <!-- 原版 CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Zcool+KuaiLe&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body, html {
+            height: 100%; margin: 0; padding: 0; font-family: 'Roboto', sans-serif;
+            background-color: #0f172a; 
+            overflow-x: hidden; touch-action: pan-y; -webkit-tap-highlight-color: transparent;
+        }
+        #root { height: 100dvh; display: flex; flex-direction: column; }
+        .font-cute { font-family: 'Zcool KuaiLe', sans-serif; }
+        .theme-bg { background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #020617 100%); }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px);
+            border: 1px solid rgba(99, 102, 241, 0.2); box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+            border-radius: 20px;
+        }
+        
+        /* 商品卡片光效 */
+        .item-card {
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .item-card:active { transform: scale(0.98); }
+        .item-owned { border-color: #4ade80; background: rgba(74, 222, 128, 0.1); }
+        .item-equipped { border-color: #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.3); background: rgba(251, 191, 36, 0.1); }
+        
+        .btn-buy {
+            background: linear-gradient(to right, #6366f1, #8b5cf6);
+        }
+        .btn-equip {
+            background: linear-gradient(to right, #22c55e, #16a34a);
+        }
+        
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, updateDoc, getDoc, onSnapshot, serverTimestamp, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        window.FB = { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, getFirestore, collection, doc, setDoc, updateDoc, getDoc, onSnapshot, serverTimestamp, runTransaction };
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // 商品目录
+        const CATALOG = [
+            { id: 'default_cat', type: 'avatar', name: '初级猫猫', price: 0, src: '1.jpg' },
+            { id: 'avatar_rich', type: 'avatar', name: '招财金猫', price: 50000, src: 'https://cdn-icons-png.flaticon.com/512/1998/1998610.png', desc: '金光闪闪，财源滚滚' },
+            { id: 'avatar_cyber', type: 'avatar', name: '赛博特工', price: 120000, src: 'https://cdn-icons-png.flaticon.com/512/3938/3938024.png', desc: '来自未来的高科技猫' },
+            { id: 'avatar_king', type: 'avatar', name: '多宝赌神', price: 500000, src: 'https://cdn-icons-png.flaticon.com/512/4681/4681818.png', desc: '王者的象征' },
+            { id: 'avatar_doge', type: 'avatar', name: 'Doge', price: 88888, src: 'https://cdn-icons-png.flaticon.com/512/6298/6298358.png', desc: '很精神！' },
+            { id: 'avatar_panda', type: 'avatar', name: '功夫熊猫', price: 66666, src: 'https://cdn-icons-png.flaticon.com/512/616/616430.png', desc: '国宝级待遇' },
+        ];
+
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [balance, setBalance] = useState(0);
+            const [inventory, setInventory] = useState(['default_cat']);
+            const [equippedAvatar, setEquippedAvatar] = useState('default_cat');
+            const [activeTab, setActiveTab] = useState('avatar');
+            const [msg, setMsg] = useState(null);
+
+            const dbRef = useRef(null);
+            const appIdRef = useRef('default-app-id');
+
+            // 1. 初始化 Firebase
+            useEffect(() => {
+                const initFirebase = async () => {
+                    if (!window.FB) return;
+                    const config = { apiKey: "AIzaSyCfoqSV5dI6-dzrvfx1e1NHnbpwlBTloKw", authDomain: "haer-870de.firebaseapp.com", projectId: "haer-870de", storageBucket: "haer-870de.firebasestorage.app", messagingSenderId: "397525543796", appId: "1:397525543796:web:c503e7ebb1586335615a21", measurementId: "G-08352H7R4G" };
+                    try {
+                        const app = window.FB.initializeApp(config);
+                        const auth = window.FB.getAuth(app);
+                        dbRef.current = window.FB.getFirestore(app);
+                        await window.FB.signInAnonymously(auth);
+                        window.FB.onAuthStateChanged(auth, u => setUser(u));
+                    } catch (e) { console.error(e); }
+                };
+                initFirebase();
+                
+                // 图标初始化
+                if (window.lucide) window.lucide.createIcons();
+            }, []);
+
+            // 2. 同步数据
+            useEffect(() => {
+                if (!user || !dbRef.current) return;
+                
+                // 监听余额
+                const accountRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'users', user.uid, 'data', 'account');
+                const unsubAccount = window.FB.onSnapshot(accountRef, (doc) => {
+                    if (doc.exists()) setBalance(doc.data().balance || 0);
+                });
+
+                // 监听背包 & 装备
+                const invRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'users', user.uid, 'data', 'inventory');
+                const unsubInv = window.FB.onSnapshot(invRef, (doc) => {
+                    if (doc.exists()) {
+                        const data = doc.data();
+                        setInventory(data.items || ['default_cat']);
+                        setEquippedAvatar(data.equippedAvatar || 'default_cat');
+                        
+                        // 同步到本地，方便其他页面快速读取
+                        const currentItem = CATALOG.find(i => i.id === (data.equippedAvatar || 'default_cat'));
+                        if (currentItem) {
+                            localStorage.setItem('active_avatar', currentItem.src);
+                        }
+                    } else {
+                        // 初始化背包
+                        window.FB.setDoc(invRef, { items: ['default_cat'], equippedAvatar: 'default_cat' }, { merge: true });
+                    }
+                });
+
+                return () => { unsubAccount(); unsubInv(); };
+            }, [user]);
+
+            // 3. 购买逻辑
+            const buyItem = async (item) => {
+                if (inventory.includes(item.id)) return;
+                if (balance < item.price) {
+                    showToast("余额不足！快去赢点钱吧~", "error");
+                    return;
+                }
+
+                try {
+                    await window.FB.runTransaction(dbRef.current, async (transaction) => {
+                        const accountRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'users', user.uid, 'data', 'account');
+                        const invRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'users', user.uid, 'data', 'inventory');
+                        
+                        const sfDoc = await transaction.get(accountRef);
+                        const newBalance = sfDoc.data().balance - item.price;
+                        
+                        if (newBalance < 0) throw "余额不足";
+
+                        transaction.update(accountRef, { balance: newBalance });
+                        
+                        // 更新背包
+                        const invDoc = await transaction.get(invRef);
+                        const currentItems = invDoc.exists() ? (invDoc.data().items || []) : [];
+                        transaction.set(invRef, { items: [...currentItems, item.id] }, { merge: true });
+                    });
+                    showToast(`成功购买: ${item.name}`, "success");
+                } catch (e) {
+                    showToast("购买失败: " + e, "error");
+                }
+            };
+
+            // 4. 装备逻辑
+            const equipItem = async (item) => {
+                try {
+                    const invRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'users', user.uid, 'data', 'inventory');
+                    await window.FB.updateDoc(invRef, { equippedAvatar: item.id });
+                    localStorage.setItem('active_avatar', item.src);
+                    showToast(`已装备: ${item.name}`, "success");
+                } catch(e) {
+                    console.error(e);
+                }
+            };
+
+            const showToast = (text, type) => {
+                setMsg({ text, type });
+                setTimeout(() => setMsg(null), 3000);
+            };
+
+            return (
+                <div className="theme-bg text-white flex flex-col h-full w-full relative">
+                    {/* Header */}
+                    <div className="p-4 flex justify-between items-center bg-slate-900/50 backdrop-blur-md border-b border-white/10 sticky top-0 z-20">
+                        <div className="flex items-center gap-3">
+                            <a href="index.html" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+                                <lucide-icon name="arrow-left" size="20"></lucide-icon>
+                            </a>
+                            <h1 className="font-cute text-xl text-yellow-400">多宝商城</h1>
+                        </div>
+                        <div className="flex items-center gap-2 bg-black/30 px-3 py-1 rounded-full border border-yellow-500/30">
+                            <span>💰</span>
+                            <span className="font-mono font-bold">{balance.toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="flex p-2 gap-2 justify-center mt-2">
+                        <button onClick={() => setActiveTab('avatar')} className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${activeTab==='avatar' ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-white/10 text-white/50'}`}>
+                            头像 Avatar
+                        </button>
+                        <button onClick={() => showToast('敬请期待!', 'info')} className="px-6 py-2 rounded-full text-sm font-bold bg-white/10 text-white/50">
+                            称号 (暂未开放)
+                        </button>
+                    </div>
+
+                    {/* Product Grid */}
+                    <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-4 pb-20">
+                        {CATALOG.filter(i => i.type === activeTab).map(item => {
+                            const isOwned = inventory.includes(item.id);
+                            const isEquipped = equippedAvatar === item.id;
+                            
+                            return (
+                                <div key={item.id} className={`item-card relative bg-slate-800/60 rounded-2xl p-4 flex flex-col items-center ${isEquipped ? 'item-equipped' : (isOwned ? 'item-owned' : '')}`}>
+                                    {isEquipped && <div className="absolute top-2 right-2 bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full">使用中</div>}
+                                    
+                                    <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-indigo-500/30 mb-3 bg-slate-900 shadow-lg">
+                                        <img src={item.src} className="w-full h-full object-cover" />
+                                    </div>
+                                    
+                                    <h3 className="font-bold text-white mb-1">{item.name}</h3>
+                                    <p className="text-xs text-white/40 mb-3 text-center h-8 line-clamp-2">{item.desc || '多宝专属限定头像'}</p>
+                                    
+                                    {isOwned ? (
+                                        <button 
+                                            onClick={() => equipItem(item)}
+                                            disabled={isEquipped}
+                                            className={`w-full py-2 rounded-xl font-bold text-sm transition-all ${isEquipped ? 'bg-white/10 text-white/50 cursor-default' : 'btn-equip text-white shadow-lg hover:scale-105'}`}
+                                        >
+                                            {isEquipped ? '已装备' : '装 备'}
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            onClick={() => buyItem(item)}
+                                            className="w-full py-2 rounded-xl font-bold text-sm btn-buy text-white shadow-lg hover:scale-105 flex items-center justify-center gap-1"
+                                        >
+                                            <span>💰</span> {item.price > 0 ? (item.price >= 10000 ? `${item.price/10000}万` : item.price) : '免费'}
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Toast Msg */}
+                    {msg && (
+                        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 backdrop-blur px-6 py-3 rounded-xl border border-white/20 shadow-2xl flex flex-col items-center z-50 animate-bounce">
+                            <span className="text-2xl mb-1">{msg.type === 'success' ? '✅' : '⚠️'}</span>
+                            <span className="font-bold text-white">{msg.text}</span>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

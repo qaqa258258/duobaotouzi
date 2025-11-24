@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -289,7 +290,9 @@
             const [isEditingName, setIsEditingName] = useState(!nickname);
             const [tempName, setTempName] = useState(nickname);
             const [avatar, setAvatar] = useState(() => localStorage.getItem('dice_game_avatar') || '🐱');
-            const [tempAvatar, setTempAvatar] = useState(() => localStorage.getItem('dice_game_avatar') || '🐱');
+            // Avatar Image for the button
+            const [avatarImg, setAvatarImg] = useState(() => localStorage.getItem('active_avatar') || '1.jpg');
+            
             const messagesEndRef = useRef(null);
 
             useEffect(() => {
@@ -321,10 +324,6 @@
                 if(tempName.trim()) { 
                     setNickname(tempName.trim()); 
                     localStorage.setItem('dice_game_nickname', tempName.trim()); 
-                }
-                if (tempAvatar.trim()) {
-                    setAvatar(tempAvatar.trim());
-                    localStorage.setItem('dice_game_avatar', tempAvatar.trim());
                 }
                 setIsEditingName(false); 
             };
@@ -370,12 +369,6 @@
                             {isEditingName ? (
                                 <div className="absolute inset-0 z-20 bg-slate-900/95 flex flex-col items-center justify-center p-4 space-y-3">
                                     <input type="text" value={tempName} onChange={(e)=>setTempName(e.target.value)} placeholder="请输入昵称" className="w-full bg-white/10 border border-indigo-400 rounded-full px-4 py-2 text-white text-center text-sm" />
-                                    <input type="text" value={tempAvatar} onChange={(e)=>setTempAvatar(e.target.value)} placeholder="头像 emoji，如 🐱" className="w-full bg-white/10 border border-indigo-400 rounded-full px-4 py-2 text-white text-center text-sm" />
-                                    <div className="flex gap-2 text-xl">
-                                        {['🐱','🐯','🐶','🐼','🐻','🐵'].map(em => (
-                                            <button key={em} type="button" onClick={()=>setTempAvatar(em)} className={`w-8 h-8 flex items-center justify-center rounded-full ${tempAvatar===em?'bg-indigo-500':'bg-white/10'}`}>{em}</button>
-                                        ))}
-                                    </div>
                                     <button onClick={saveNickname} className="mt-1 bg-indigo-500 text-white px-6 py-2 rounded-full font-bold text-sm">进入</button>
                                 </div>
                             ) : (
@@ -419,7 +412,7 @@
                         </div>
                     )}
                     <button onClick={() => setIsOpen(!isOpen)} className="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg border-2 border-indigo-400 overflow-hidden relative active:scale-90 transition-transform">
-                        {isOpen ? <span className="text-xl font-bold">✕</span> : <img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/724/724715.png'}} />}
+                        {isOpen ? <span className="text-xl font-bold">✕</span> : <img src={avatarImg} className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/724/724715.png'}} />}
                     </button>
                 </div>
             );
@@ -698,6 +691,9 @@
             const [feedCount, setFeedCount] = useState(0);
             const [showSuperFeed, setShowSuperFeed] = useState(false);
             const [firebaseReady, setFirebaseReady] = useState(false);
+            
+            // Avatar
+            const [avatarImg, setAvatarImg] = useState(() => localStorage.getItem('active_avatar') || '1.jpg');
 
             const dbRef = useRef(null);
             const appIdRef = useRef('default-app-id');
@@ -1266,7 +1262,7 @@
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className={`w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center border-2 border-indigo-400 overflow-visible shadow-lg flex-shrink-0 relative ${streak >= 3 ? 'streak-fire' : ''}`}>
                                 <div className="w-full h-full rounded-full overflow-hidden">
-                                    <img src="1.jpg" className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
+                                    <img src={avatarImg} className="w-full h-full object-cover" onError={(e)=>{e.target.src='https://cdn-icons-png.flaticon.com/512/616/616430.png'}} />
                                 </div>
                                 {streak >= 3 && <div className="absolute -bottom-1 -right-1 bg-red-600 text-white text-[8px] px-1 rounded-full font-bold border border-white">🔥{streak}</div>}
                             </div>
@@ -1276,6 +1272,9 @@
                             </div>
                         </div>
                         <div className="glass-panel px-3 py-1 flex items-center gap-2 flex-shrink-0 ml-2 border-indigo-500/30">
+                            <a href="shop.html" className="text-xs bg-yellow-500/20 px-2 py-1 rounded text-yellow-300 hover:text-white transition-colors mr-1">
+                                🛍️ 商城
+                            </a>
                             <a href="index.html" className="text-xs bg-white/10 px-2 py-1 rounded text-indigo-300 hover:text-white transition-colors mr-2">🎲 玩骰子</a>
                             <span className="text-yellow-400 text-base">💰</span>
                             <span className="text-lg font-mono font-bold text-white">{balance.toLocaleString()}</span>
@@ -1359,24 +1358,24 @@
                         </div>
                     </div>
 
-                    {/* Footer - Betting & Controls - New Layout */}
+                    {/* Footer - Betting & Controls */}
                     <div className="absolute bottom-0 left-0 w-full p-3 bg-slate-900/95 border-t border-indigo-500/20 backdrop-blur-md z-50">
                         {gameState === 'betting' && (
                             <div className="flex flex-col gap-3">
                                 {/* 下注区域选择 */}
                                 <div className="flex justify-center gap-4 mb-1">
-                                    <button onClick={() => setSelectedBetType('pairs')} className={`bet-zone relative w-20 h-20 rounded-xl flex flex-col items-center justify-center ${selectedBetType==='pairs'?'ring-2 ring-yellow-400 bg-white/10':''} ${sideBets.pairs>0?'has-bet':''}`}>
+                                    <button onClick={() => setSelectedBetType('pairs')} className={`bet-zone relative w-20 h-20 rounded-xl flex flex-col items-center justify-center ${selectedBetType === 'pairs' ? 'ring-2 ring-yellow-400 bg-white/10' : ''} ${sideBets.pairs > 0 ? 'has-bet' : ''}`}>
                                         <span className="text-xs font-bold text-indigo-300">完美对子</span>
                                         <span className="text-[10px] text-white/40">25:1</span>
                                         {sideBets.pairs > 0 && <span className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] px-1.5 rounded-full shadow">${sideBets.pairs}</span>}
                                     </button>
-                                    
-                                    <button onClick={() => setSelectedBetType('main')} className={`bet-zone relative w-24 h-24 rounded-full border-4 flex flex-col items-center justify-center ${selectedBetType==='main'?'border-yellow-400 bg-white/10':'border-indigo-500/30'} ${bet>0?'has-bet border-yellow-400':''}`}>
+
+                                    <button onClick={() => setSelectedBetType('main')} className={`bet-zone relative w-24 h-24 rounded-full border-4 flex flex-col items-center justify-center ${selectedBetType === 'main' ? 'border-yellow-400 bg-white/10' : 'border-indigo-500/30'} ${bet > 0 ? 'has-bet border-yellow-400' : ''}`}>
                                         <span className="text-lg font-cute text-white">下注</span>
                                         {bet > 0 && <span className="text-sm font-mono font-bold text-yellow-400">${bet}</span>}
                                     </button>
 
-                                    <button onClick={() => setSelectedBetType('poker3')} className={`bet-zone relative w-20 h-20 rounded-xl flex flex-col items-center justify-center ${selectedBetType==='poker3'?'ring-2 ring-yellow-400 bg-white/10':''} ${sideBets.poker3>0?'has-bet':''}`}>
+                                    <button onClick={() => setSelectedBetType('poker3')} className={`bet-zone relative w-20 h-20 rounded-xl flex flex-col items-center justify-center ${selectedBetType === 'poker3' ? 'ring-2 ring-yellow-400 bg-white/10' : ''} ${sideBets.poker3 > 0 ? 'has-bet' : ''}`}>
                                         <span className="text-xs font-bold text-indigo-300">21+3</span>
                                         <span className="text-[10px] text-white/40">100:1</span>
                                         {sideBets.poker3 > 0 && <span className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] px-1.5 rounded-full shadow">${sideBets.poker3}</span>}
@@ -1422,20 +1421,20 @@
                                 <button onClick={hit} disabled={gameState === 'dealerTurn'} className="flex-1 py-3 bg-green-600 rounded-xl text-white font-bold text-lg shadow-lg active:scale-95 disabled:opacity-50 btn-action border-b-4 border-green-800 active:border-b-0 active:translate-y-1 transition-all">
                                     要牌 (Hit)
                                 </button>
-                                
+
                                 <div className="flex flex-col gap-2">
                                     {canDouble && (
                                         <button onClick={doubleDown} disabled={gameState === 'dealerTurn'} className="px-4 py-3 bg-yellow-500 rounded-xl text-black font-bold text-sm shadow-lg active:scale-95 disabled:opacity-50 btn-action border-b-4 border-yellow-700 active:border-b-0 active:translate-y-1 transition-all leading-none">
-                                            加倍<br/><span className="text-[10px] opacity-70">DOUBLE</span>
+                                            加倍<br /><span className="text-[10px] opacity-70">DOUBLE</span>
                                         </button>
                                     )}
                                     {canSplit && (
                                         <button onClick={splitPair} className="px-4 py-3 bg-purple-600 rounded-xl text-white font-bold text-sm shadow-lg active:scale-95 btn-action border-b-4 border-purple-800 active:border-b-0 active:translate-y-1 transition-all leading-none">
-                                            分牌<br/><span className="text-[10px] opacity-70">SPLIT</span>
+                                            分牌<br /><span className="text-[10px] opacity-70">SPLIT</span>
                                         </button>
                                     )}
                                 </div>
-                                
+
                                 <button onClick={stand} disabled={gameState === 'dealerTurn'} className="flex-1 py-3 bg-red-600 rounded-xl text-white font-bold text-lg shadow-lg active:scale-95 disabled:opacity-50 btn-action border-b-4 border-red-800 active:border-b-0 active:translate-y-1 transition-all">
                                     停牌 (Stand)
                                 </button>
@@ -1458,4 +1457,5 @@
         root.render(<App />);
     </script>
 </body>
+
 </html>
