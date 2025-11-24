@@ -157,6 +157,12 @@
             transform: skewX(-20deg);
             animation: shine-gold 3s infinite linear;
         }
+        
+        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-pulse-gold { animation: pulseGold 2s infinite; }
+        @keyframes pulseGold { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
+
     </style>
 
     <!-- 适配 Firebase Compat 模式 (使用国内源) -->
@@ -287,7 +293,7 @@
             const quickEmojis = ["(≧∇≦)ﾉ", "🍀好运", "💰发财", "😭输光", "🐱喵", "🚀起飞"];
 
             return (
-                <div className={`fixed bottom-32 right-4 z-[60] flex flex-col items-end`}>
+                <div className={`fixed bottom-28 right-4 z-[90] flex flex-col items-end`}>
                     {isOpen && (
                         <div className="mb-2 w-72 h-80 glass-panel flex flex-col overflow-hidden border border-indigo-500/30 shadow-2xl animate-fade-in-up bg-slate-900/95">
                             <div className="bg-indigo-600/90 p-2 flex justify-between items-center">
@@ -694,7 +700,7 @@
                 <div className="theme-bg text-white flex flex-col h-full w-full relative">
                     <div className="absolute inset-0 theme-overlay pointer-events-none"></div>
                     <div className="absolute inset-0 pointer-events-none z-40">{floatingTexts.map(ft => <FloatingText key={ft.id} text={ft.text} x={ft.x} y={ft.y} color={ft.color} />)}</div>
-                    {firebaseReady && <ChatRoom user={user} db={dbRef.current} appId={appIdRef.current} nickname={nickname} setNickname={setNickname} balance={balance} />}
+                    <ChatRoom user={user} db={dbRef.current} appId={appIdRef.current} nickname={nickname} setNickname={setNickname} balance={balance} />
                     {showDailyBonus && <DailyBonusModal amount={10000} onClose={()=>setShowDailyBonus(false)} />}
                     {showRelief && <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur flex items-center justify-center p-6 animate-fade-in-up"><div className="bg-indigo-900 border-2 border-indigo-400 p-6 rounded-3xl text-center shadow-2xl w-full max-w-xs relative overflow-hidden"><div className="absolute inset-0 bg-indigo-500/10"></div><div className="relative z-10"><div className="text-5xl mb-2">😿</div><h3 className="text-2xl font-cute text-indigo-200 mb-2">没钱了...</h3><button onClick={handleRelief} className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold px-8 py-3 rounded-full shadow-lg animate-pulse-gold">领取 $2,000 翻本</button><button onClick={()=>setShowRelief(false)} className="block mt-4 text-xs text-white/40 underline w-full">倔强离开</button></div></div></div>}
 
