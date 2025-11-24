@@ -59,7 +59,10 @@
 
         /* --- 3D 骰子 --- */
         .scene { perspective: 1200px; display: flex; justify-content: center; align-items: center; }
-        .cube-wrapper { position: relative; transform-style: preserve-3d; width: 60px; height: 60px; }
+        .cube-wrapper { 
+            position: relative; transform-style: preserve-3d; width: 60px; height: 60px; 
+            will-change: transform; /* 性能优化 */
+        }
         @media (min-width: 640px) { .cube-wrapper { width: 80px; height: 80px; } }
         .cube { width: 100%; height: 100%; position: absolute; transform-style: preserve-3d; }
         
@@ -95,12 +98,17 @@
             .cube-wrapper .face.bottom { transform: rotateX(-90deg) translateZ(40px); }
         }
 
-        .shadow-spot { position: absolute; width: 60px; height: 60px; background: radial-gradient(rgba(0,0,0,0.5), transparent 60%); transform: rotateX(90deg) translateZ(-50px); filter: blur(6px); opacity: 0.7; transition: all 0.3s; }
+        .shadow-spot { position: absolute; width: 60px; height: 60px; background: radial-gradient(rgba(0,0,0,0.5), transparent 60%); transform: rotateX(90deg) translateZ(-50px); filter: blur(6px); opacity: 0.7; transition: all 0.3s; will-change: transform; }
         @media (min-width: 640px) { .shadow-spot { width: 80px; height: 80px; transform: translateZ(-65px); } }
 
         @keyframes tumble { 0% { transform: rotateX(0) rotateY(0) rotateZ(0); } 100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(360deg); } }
         @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-80px) scale(1.3); } }
-        .floating-text { position: absolute; font-weight: 900; font-family: 'Zcool KuaiLe', sans-serif; text-shadow: 0 2px 0px #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; white-space: nowrap; }
+        .floating-text { 
+            position: absolute; font-weight: 900; font-family: 'Zcool KuaiLe', sans-serif; 
+            text-shadow: 0 2px 0px #000; pointer-events: none; 
+            animation: floatUp 1.5s ease-out forwards; z-index: 100; white-space: nowrap; 
+            will-change: transform, opacity; /* 性能优化 */
+        }
         
         @keyframes bounce-mascot { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
         @keyframes heart-beat { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
@@ -150,6 +158,16 @@
         .leader-item:nth-child(3) .rank-num { color: #f97316; text-shadow: 0 0 8px #f97316; }
         .positive-score { color: #4ade80; text-shadow: 0 0 5px rgba(74, 222, 128, 0.3); }
         .negative-score { color: #f87171; }
+        
+        .btn-action {
+            position: relative; overflow: hidden;
+        }
+        .btn-action::after {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(to bottom right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+            transform: rotate(45deg) translateY(-100%); transition: transform 0.3s;
+        }
+        .btn-action:active::after { transform: rotate(45deg) translateY(0%); }
 
         /* 头衔徽章特效 */
         @keyframes shine-gold { 0% { background-position: -100px; } 100% { background-position: 200px; } }
@@ -168,7 +186,7 @@
             0% { transform: translateY(-100px) rotate(0deg); opacity: 1; } 
             100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } 
         }
-        .rain-item { position: absolute; animation: rain-fall linear forwards; top: -50px; z-index: 90; }
+        .rain-item { position: absolute; animation: rain-fall linear forwards; top: -50px; z-index: 90; will-change: transform; }
         
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -279,7 +297,6 @@
 
                 const el = messagesEndRef.current;
                 if (!el) return;
-                // 使用 setTimeout 确保在 DOM 更新后再滚动，避免移动端有时不生效
                 setTimeout(() => {
                     el.scrollIntoView({ behavior: "smooth", block: "end" });
                 }, 0);
@@ -312,7 +329,6 @@
                 }
                 if (!msg) return;
 
-                // Optimistic clear (立刻清空)
                 if(!textToSend) setInputText("");
 
                 const displayName = `${avatar || ''} ${nickname || `User ${user.uid.slice(0,3)}`}`.trim();
@@ -597,17 +613,20 @@
             const [feedAnim, setFeedAnim] = useState(false);
             const [feedCount, setFeedCount] = useState(0);
             const [showSuperFeed, setShowSuperFeed] = useState(false);
+            
+            // New: Repeat Bet Logic
+            const [lastBetHistory, setLastBetHistory] = useState([]);
 
             const dbRef = useRef(null);
             const authRef = useRef(null);
             const appIdRef = useRef('default-app-id'); 
+            const todayKey = `dice_start_${new Date().toDateString()}`;
 
             useEffect(() => { 
                 const savedName = localStorage.getItem('dice_game_nickname'); 
                 if (savedName) setNickname(savedName); 
                 
                 // 尝试读取本地存储的今日初始余额
-                const todayKey = `dice_start_${new Date().toDateString()}`;
                 const savedStart = localStorage.getItem(todayKey);
                 if (savedStart) setInitialBalance(parseInt(savedStart));
             }, []);
@@ -646,7 +665,6 @@
                             setBalance(data.balance);
                             
                             // 如果这是新的一天第一次加载数据，设置初始余额
-                            const todayKey = `dice_start_${new Date().toDateString()}`;
                             if (!localStorage.getItem(todayKey)) {
                                 setInitialBalance(data.balance);
                                 localStorage.setItem(todayKey, data.balance.toString());
@@ -658,6 +676,7 @@
                         window.FB.setDoc(docRef, { balance: 10000, lastBonusDate: new Date().toDateString(), createdAt: window.FB.serverTimestamp() }, { merge: true }); 
                         setBalance(10000); 
                         setInitialBalance(10000);
+                        localStorage.setItem(todayKey, "10000");
                     }
                 });
 
@@ -676,8 +695,8 @@
                                 transaction.update(docRef, { balance: newBalance, lastBonusDate: today });
                                 
                                 // 更新今日初始余额为发完低保后的余额
-                                const todayKey = `dice_start_${today}`;
-                                localStorage.setItem(todayKey, newBalance.toString());
+                                const currentKey = `dice_start_${today}`;
+                                localStorage.setItem(currentKey, newBalance.toString());
                                 return true; // Indicate bonus given
                             }
                             return false;
@@ -705,7 +724,10 @@
                     await window.FB.updateDoc(docRef, { balance: newBalance }); 
                     
                     // 2. 更新公共战绩榜 (带 profit)
-                    const currentProfit = newBalance - initialBalance;
+                    // 强制读取 LocalStorage 确保 profit 计算准确
+                    const storedStart = parseInt(localStorage.getItem(todayKey) || initialBalance);
+                    const currentProfit = newBalance - storedStart;
+                    
                     const leaderRef = window.FB.doc(dbRef.current, 'artifacts', appIdRef.current, 'public', 'data', 'leaderboard', user.uid);
                     await window.FB.setDoc(leaderRef, {
                         nickname: nickname || `User ${user.uid.slice(0,3)}`,
@@ -772,8 +794,45 @@
                 setBetHistory(prev => prev.slice(0, -1)); AudioSynth.playChip();
             };
 
+            // Repeat Bet Function
+            const repeatBet = () => {
+                if (gameState !== 'idle' || lastBetHistory.length === 0) return;
+                
+                // 1. Calculate total needed
+                const totalCost = lastBetHistory.reduce((sum, item) => sum + item.amount, 0);
+                if (balance < totalCost) { AudioSynth.playLose(); alert("余额不足以重复下注"); return; }
+                
+                // 2. Deduct all at once
+                const newBalance = balance - totalCost;
+                setBalance(newBalance);
+                updateCloudBalance(newBalance);
+                AudioSynth.playChip();
+
+                // 3. Apply bets
+                const newBets = { ...bets };
+                const newPointBets = { ...pointBets };
+                const newSpecialBets = { ...specialBets };
+                
+                lastBetHistory.forEach(bet => {
+                     if (bet.category === 'main') newBets[bet.key] = (newBets[bet.key] || 0) + bet.amount;
+                     else if (bet.category === 'point') newPointBets[bet.key] = (newPointBets[bet.key] || 0) + bet.amount;
+                     else if (bet.category === 'special') newSpecialBets[bet.key] = (newSpecialBets[bet.key] || 0) + bet.amount;
+                });
+                
+                setBets(newBets);
+                setPointBets(newPointBets);
+                setSpecialBets(newSpecialBets);
+                
+                // 4. Update current history so undo works
+                setBetHistory(prev => [...prev, ...lastBetHistory]);
+            };
+
             const rollDice = () => {
                 if (betHistory.length === 0) { alert("请先下注喵！"); return; }
+                
+                // Save history for repeat bet before clearing
+                setLastBetHistory([...betHistory]);
+                
                 setGameState('rolling'); setWinningZones([]); setFloatingTexts([]); setResultText(null);
                 AudioSynth.playRoll(); AudioSynth.vibrate([50, 50, 50]);
                 setTimeout(() => {
@@ -846,10 +905,10 @@
                             </div>
                         </div>
                         <div className="glass-panel px-3 py-1 flex items-center gap-2 flex-shrink-0 ml-2 border-indigo-500/30">
-                            {/* 新增: 跳转到 21 点按钮 */}
-                            <a href="blackjack.html" className="text-xs bg-indigo-500/20 px-2 py-1 rounded text-indigo-300 hover:text-white transition-colors mr-2">
+                            {/* 新增: 跳转到 21 点按钮 - 使用相对路径保持 Session */}
+                            <button onClick={() => window.location.href = 'blackjack.html'} className="text-xs bg-indigo-500/20 px-2 py-1 rounded text-indigo-300 hover:text-white transition-colors mr-2">
                                 ♠️ 玩21点
-                            </a>
+                            </button>
                             <span className="text-yellow-400 text-base">💰</span>
                             <span className="text-lg font-mono font-bold text-white">{balance.toLocaleString()}</span>
                         </div>
@@ -952,18 +1011,34 @@
                         <StatsBoard db={dbRef.current} appId={appIdRef.current} />
                     </div>
 
-                    {/* Fixed Footer Controls */}
+                    {/* Fixed Footer Controls - New Layout */}
                     <div className="absolute bottom-0 left-0 w-full p-3 bg-slate-900/95 border-t border-indigo-500/20 backdrop-blur-md z-50">
-                        <div className="w-full max-w-4xl mx-auto flex justify-between items-center gap-3">
-                            <button onClick={undoBet} disabled={gameState !== 'idle' || betHistory.length === 0} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white/70 disabled:opacity-30 active:bg-white/20">
-                                <lucide-icon name="rotate-ccw" size="18"></lucide-icon>
-                            </button>
-                            <div className="flex gap-2 flex-1 overflow-x-auto hide-scrollbar px-1">
+                        <div className="w-full max-w-4xl mx-auto flex flex-col gap-3">
+                            {/* Row 1: Chips */}
+                            <div className="flex gap-4 justify-center">
                                 {chips.map(val => <button key={val} onClick={() => setSelectedChip(val)} className={`flex-shrink-0 w-10 h-10 rounded-full border-2 border-dashed flex items-center justify-center font-bold text-[10px] transition-transform active:scale-90 ${selectedChip===val?'border-yellow-400 bg-yellow-500 text-black shadow-lg':'border-white/20 text-white/50'}`}>{val}</button>)}
                             </div>
-                            <button onClick={rollDice} disabled={gameState === 'rolling' || betHistory.length === 0} className={`flex-1 py-2.5 rounded-xl font-cute text-xl tracking-widest shadow-lg active:scale-95 transition-all ${gameState==='rolling'?'bg-slate-600 text-white/50 cursor-not-allowed':'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-indigo-500/50'}`}>
-                                {gameState === 'rolling' ? '...' : '开 摇'}
-                            </button>
+
+                            {/* Row 2: Controls */}
+                            <div className="flex items-stretch gap-3 h-12">
+                                {/* Undo Button - Green Square/Round */}
+                                <button onClick={undoBet} disabled={gameState !== 'idle' || betHistory.length === 0} className="w-16 rounded-xl bg-green-600 border-b-4 border-green-800 text-white disabled:opacity-30 disabled:border-transparent active:border-b-0 active:translate-y-1 transition-all flex flex-col items-center justify-center shadow-lg">
+                                    <lucide-icon name="rotate-ccw" size="18"></lucide-icon>
+                                    <span className="text-[9px] font-bold mt-0.5">撤销</span>
+                                </button>
+
+                                {/* Repeat Button - Orange Wide */}
+                                {lastBetHistory.length > 0 && gameState === 'idle' && (
+                                    <button onClick={repeatBet} className="flex-1 rounded-xl bg-orange-500 border-b-4 border-orange-700 text-white font-cute text-xl tracking-widest shadow-lg active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2">
+                                        <lucide-icon name="repeat" size="18"></lucide-icon> 重注
+                                    </button>
+                                )}
+
+                                {/* Roll Button - Purple Wide */}
+                                <button onClick={rollDice} disabled={gameState === 'rolling' || betHistory.length === 0} className={`flex-1 rounded-xl font-cute text-xl tracking-widest shadow-lg active:border-b-0 active:translate-y-1 transition-all border-b-4 ${gameState==='rolling'?'bg-slate-600 border-slate-700 text-white/50 cursor-not-allowed':'bg-indigo-600 border-indigo-800 text-white'}`}>
+                                    {gameState === 'rolling' ? '...' : '开 摇'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
